@@ -19,7 +19,7 @@ type_complexity = "allow"
 kurbo = { version = "0.13", features = ["serde"] }
 skrifa = "0.47"
 harfrust = "0.13"
-wuff = "0.2.9"
+wuff = "0.2.10"
 unicode-bidi = "0.3"
 unicode-script = "0.5"
 log = "0.4"

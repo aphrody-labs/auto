@@ -213,12 +213,12 @@ fn class_element_name(el: &ClassElement) -> String {
         ClassElement::MethodDefinition(m) => m
             .key
             .name()
-            .map(|n| n.to_string())
+            .map(|n| n.display().to_string())
             .unwrap_or_else(|| "method".to_string()),
         ClassElement::PropertyDefinition(p) => p
             .key
             .name()
-            .map(|n| n.to_string())
+            .map(|n| n.display().to_string())
             .unwrap_or_else(|| "field".to_string()),
         _ => "member".to_string(),
     }

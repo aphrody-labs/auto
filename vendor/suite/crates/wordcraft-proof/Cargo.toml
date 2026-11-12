@@ -17,7 +17,7 @@ type_complexity = "allow"
 
 [dependencies]
 log = "0.4"
-miniz_oxide = "0.8"
+miniz_oxide = "0.9"
 
 [dev-dependencies]
 proptest = "1"

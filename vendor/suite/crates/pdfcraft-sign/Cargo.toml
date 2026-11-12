@@ -26,7 +26,7 @@ pdfcraft-cos = { path = "../pdfcraft-cos", version = "0.7.1" }
 pdfcraft-annot = { path = "../pdfcraft-annot", version = "0.7.1" }
 pdfcraft-fonts = { path = "../pdfcraft-fonts", version = "0.7.1" }
 thiserror = "2"
-base64 = "0.22"
+base64 = "0.23"
 sha1 = "0.11"
 sha2 = "0.11"
 p256 = { version = "0.14", default-features = false, features = ["ecdsa", "std"] }
@@ -36,7 +36,7 @@ bp256 = { version = "0.14", default-features = false, features = ["arithmetic", 
 bp384 = { version = "0.14", default-features = false, features = ["arithmetic", "ecdsa", "std"] }
 ecdsa = { version = "0.17", default-features = false, features = ["algorithm", "der"] }
 crypto-bigint = { version = "0.7", default-features = false, features = ["alloc"] }
-rsa = { version = "0.10.0-rc.18", default-features = false, features = ["std", "hazmat"] }
+rsa = { version = "0.10.0", default-features = false, features = ["std", "hazmat"] }
 pbkdf2 = { version = "0.13", default-features = false, features = ["hmac"] }
 hmac = "0.13"
 aes = "0.9"
@@ -48,7 +48,7 @@ ripemd = "0.2.0"
 ed25519-dalek = "3.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-aws-lc-rs = { version = "1.18", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"] }
+aws-lc-rs = { version = "1.19", default-features = false, features = ["aws-lc-sys", "prebuilt-nasm"] }
 getrandom = "0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]

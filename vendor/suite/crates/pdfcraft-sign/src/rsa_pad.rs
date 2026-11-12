@@ -3,7 +3,7 @@
 //! any digest, any MGF1 hash and any salt length, which the `rsa` crate's typed API can't do.
 //! Verification only; public data, so nothing here needs to be constant-time.
 
-use rsa::{BoxedUint, RsaPublicKey};
+use rsa::{BoxedUint, PublicKey};
 
 use crate::SignError;
 use crate::der;
@@ -20,7 +20,7 @@ fn encoded_message(
     notes: &mut Vec<&'static str>,
 ) -> Result<Option<Vec<u8>>, SignError> {
     let k = n.len();
-    let key = RsaPublicKey::new(
+    let key = PublicKey::new(
         BoxedUint::from_be_slice_vartime(n),
         BoxedUint::from_be_slice_vartime(e),
     )
