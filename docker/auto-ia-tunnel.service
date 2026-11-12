@@ -1,0 +1,16 @@
+[Unit]
+Description=Auto - accès privé au moteur d’extraction existant
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/bin/ssh -NT -o ControlMaster=no -o ControlPath=none -o ForkAfterAuthentication=no -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L 172.26.0.1:18799:127.0.0.1:8798 -L 172.27.0.1:18799:127.0.0.1:8798 dbfr
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

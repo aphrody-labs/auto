@@ -1,0 +1,224 @@
+.courrier-app {
+  max-width: 1680px;
+  margin: auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+.courrier-toggle-comptes,
+.courrier-retour-liste {
+  display: none;
+}
+.courrier-comptes button:not(.bouton),
+.courrier-pagination button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--auto-bordure, #b7c6c0);
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  min-height: 40px;
+  cursor: pointer;
+}
+.courrier-comptes button[aria-pressed="true"] {
+  background: color-mix(in srgb, #056b5b 12%, transparent);
+  border-color: #056b5b;
+}
+.courrier-app button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.courrier-entete,
+.courrier-actions,
+.courrier-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.courrier-entete {
+  margin-bottom: 1.5rem;
+}
+.courrier-entete h1 {
+  margin: 0.6rem 0;
+}
+.courrier-entete p {
+  margin: 0.25rem 0;
+}
+.courrier-grille {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(240px, 360px) minmax(300px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.courrier-comptes,
+.courrier-liste,
+.courrier-lecture {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--auto-bordure, #b7c6c0);
+  border-radius: 12px;
+}
+.courrier-comptes > button {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+.courrier-comptes h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.65rem;
+}
+.courrier-compte {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--auto-bordure, #b7c6c0);
+  overflow-wrap: anywhere;
+}
+.courrier-compte small {
+  font-size: 0.75rem;
+}
+.courrier-app label {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.courrier-app input,
+.courrier-app select,
+.courrier-app textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0.65rem;
+  border: 1px solid var(--auto-bordure, #b7c6c0);
+  border-radius: 6px;
+  background: var(--auto-surface, #fff);
+  color: inherit;
+}
+.courrier-app textarea {
+  resize: vertical;
+}
+.courrier-liste ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.courrier-message {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 1rem 0.5rem;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid var(--auto-bordure, #b7c6c0);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.courrier-message[aria-current="true"],
+.courrier-message:hover {
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.courrier-message span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.courrier-message small {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+.courrier-non-lu {
+  font-weight: 750;
+}
+.courrier-lecture {
+  min-height: 30rem;
+}
+.courrier-texte {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.courrier-lecture h2 {
+  overflow-wrap: anywhere;
+}
+.courrier-attente {
+  padding: 3rem 1rem;
+}
+.courrier-pagination {
+  margin-top: 1rem;
+}
+.courrier-erreur {
+  padding: 1rem;
+  border: 1px solid #a62626;
+  border-radius: 6px;
+}
+.courrier-app button:focus-visible,
+.courrier-app a:focus-visible {
+  outline: 3px solid #188576;
+  outline-offset: 3px;
+}
+@media (max-width: 1100px) {
+  .courrier-grille {
+    grid-template-columns: 200px minmax(260px, 1fr);
+  }
+  .courrier-lecture {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 650px) {
+  .courrier-toggle-comptes,
+  .courrier-retour-liste {
+    display: inline-flex;
+  }
+  .courrier-comptes[data-ouverte="false"] {
+    display: none;
+  }
+  .courrier-grille[data-lecture="true"] .courrier-liste {
+    display: none;
+  }
+  .courrier-grille[data-lecture="false"] .courrier-lecture {
+    display: none;
+  }
+  .courrier-grille {
+    grid-template-columns: 1fr;
+  }
+  .courrier-lecture {
+    grid-column: auto;
+    min-height: 15rem;
+  }
+  .courrier-entete {
+    align-items: stretch;
+  }
+  .courrier-actions {
+    justify-content: flex-start;
+  }
+  .courrier-comptes {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .courrier-comptes > button {
+    margin: 0;
+  }
+  .courrier-compte {
+    padding: 0.5rem 0;
+  }
+}
+.courrier-identite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.courrier-identite strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.courrier-comptes > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

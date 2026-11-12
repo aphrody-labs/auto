@@ -1,0 +1,50 @@
+{
+  "name": "auto",
+  "private": true,
+  "license": "Apache-2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch apps/api/src/index.ts",
+    "migrate": "bun packages/store/src/migrate.ts",
+    "worker": "bun apps/worker/src/index.ts",
+    "openapi": "bun scripts/openapi.ts",
+    "test": "bun test --timeout 30000",
+    "check": "bun check",
+    "lint": "bun lint apps packages scripts",
+    "fmt": "bun fmt apps packages scripts docs",
+    "n8n:provision": "bun scripts/n8n.ts",
+    "e2e:n8n": "bun apps/api/e2e/n8n.ts",
+    "gates": "bun run build:native && bun check && bun lint apps packages scripts && bun fmt --check apps packages scripts docs && bun test --timeout 30000",
+    "gates:rust": "bun scripts/cargo.ts fmt -- --check && bun scripts/cargo.ts clippy --workspace --all-targets --locked -- -D warnings && bun scripts/cargo.ts test --workspace --locked",
+    "vendor": "bun scripts/vendor-suite.ts",
+    "validate:facturx": "bun scripts/validate-facturx.ts",
+    "build:native": "bun scripts/build-native.ts",
+    "build:desktop": "bun scripts/build-desktop.ts",
+    "build:android": "bun scripts/build-android.ts",
+    "release:vps": "bun scripts/deployer-vps.ts",
+    "build:standalone": "bun scripts/build-standalone.ts",
+    "build:all": "bun run build:native && bun run build:standalone && bun run build:desktop && bun --cwd apps/extension run build",
+    "prod": "bun scripts/prod.ts",
+    "video:doctor": "bun scripts/video-lancement.ts doctor",
+    "video:captures": "bun scripts/video-lancement-captures.ts",
+    "video:preparer": "bun scripts/video-lancement.ts preparer",
+    "video:planches": "bun scripts/video-lancement.ts planches",
+    "video:studio": "bun scripts/video-lancement.ts servir",
+    "video:rendre": "bun scripts/video-lancement.ts rendre",
+    "video:verifier": "bun scripts/video-lancement.ts verifier",
+    "video:outils": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/video-lancement-outils.ps1",
+    "video:voix": "bun scripts/video-lancement-voix.ts",
+    "video:mix": "bun scripts/video-lancement-mix.ts",
+    "video:tout": "bun run video:captures && bun run video:preparer && bun run video:voix && bun run video:rendre && bun run video:mix && bun run video:verifier"
+  },
+  "dependencies": {
+    "@aphrody/bun-plugin-tailwind": "1.4.7"
+  },
+  "devDependencies": {
+    "@aphrody/bun-types": "1.4.7"
+  }
+}

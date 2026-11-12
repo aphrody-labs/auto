@@ -1,0 +1,12 @@
+[package]
+name = "auto-connaissance"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Base de connaissances des automatisations : découpage de documents et recherche par similarité (aphrody-rag-core)"
+
+[dependencies]
+aphrody-rag-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true

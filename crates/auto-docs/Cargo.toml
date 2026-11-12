@@ -1,0 +1,21 @@
+[package]
+name = "auto-docs"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Rendu PDF des devis, factures, acomptes et avoirs (A4, polices Inter embarquées)"
+
+[dependencies]
+auto-modele = { path = "../auto-modele" }
+pdfcraft-cos.workspace = true
+pdfcraft-create.workspace = true
+pdfcraft-fonts.workspace = true
+pdfcraft-model.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+auto-facturx = { path = "../auto-facturx" }
+pdfcraft-model.workspace = true
+pdfcraft-cos.workspace = true
+pdfcraft-fonts.workspace = true

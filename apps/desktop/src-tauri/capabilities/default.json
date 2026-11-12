@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Aucune permission IPC : la fenêtre affiche le front web distant, qui ne dialogue qu'avec l'API HTTP.",
+  "windows": ["principale"],
+  "permissions": []
+}

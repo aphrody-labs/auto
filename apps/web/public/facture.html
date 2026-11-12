@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#056b5b" />
+    <!-- Application installable : liens ajoutés au chargement (servis par le serveur, pas par le bundler). -->
+    <script>
+      for (const [rel, href] of [
+        ["manifest", "/manifest.webmanifest"],
+        ["apple-touch-icon", "/icones/180.png"],
+      ])
+        document.head.append(Object.assign(document.createElement("link"), { rel, href }));
+    </script>
+    <!-- Thème imposé appliqué avant le premier rendu (pas de flash) ; le reste de la logique est chargé ensuite. -->
+    <script>
+      try {
+        const t = localStorage.getItem("auto-theme");
+        if (t === "clair" || t === "sombre") document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <title>Facture · auto</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="../src/styles/site.css" />
+  </head>
+  <body>
+    <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+    <header class="site-entete">
+      <nav aria-label="Navigation du site">
+        <a class="marque" href="/">
+          <span class="marque-logo" aria-hidden="true">
+            <svg class="icone" viewBox="0 -960 960 960" fill="currentColor">
+              <path
+                d="M222-80q-43.75 0-74.37-30.63Q117-141.25 117-185v-95q0-12.75 8.63-21.38Q134.25-310 147-310h97v-552q0-5.25 4.5-7.13Q253-871 257-867l36 36q4.64 5 10.82 5 6.18 0 11.18-5l38-38q4.64-5 10.82-5 6.18 0 11.18 5l37 38q4.64 5 10.82 5 6.18 0 11.18-5l38-38q4.64-5 10.82-5 6.18 0 11.18 5l38 38q4.64 5 10.82 5 6.18 0 11.18-5l38-38q4.64-5 10.82-5 6.18 0 11.18 5l38 38q4.64 5 10.82 5 6.18 0 11.18-5l38-38q4.64-5 10.82-5 6.18 0 11.18 5l38 38q4.64 5 10.82 5 6.18 0 11.18-5l36-36q4-4 8.5-2.13 4.5 1.88 4.5 7.13v677q0 43.75-30.62 74.37Q781.75-80 738-80H222Zm516-60q20 0 32.5-12.5T783-185v-595H304v470h359q12.75 0 21.38 8.62Q693-292.75 693-280v94.85q0 20.15 12.5 32.65T738-140ZM387-682h180q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H387q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5Zm0 134h180q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H387q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5Zm303-74q-12 0-21-9t-9-21q0-12 9-21t21-9q12 0 21 9t9 21q0 12-9 21t-21 9Zm0 129q-12 0-21-9t-9-21q0-12 9-21t21-9q12 0 21 9t9 21q0 12-9 21t-21 9ZM221-140h412v-110H177v65q0 20 12.65 32.5T221-140Zm-44 0v-110 110Z"
+              />
+            </svg>
+          </span>
+          auto
+        </a>
+        <div class="liens">
+          <a href="/tarifs">Tarifs</a>
+          <a href="/app/connexion">Se connecter</a>
+          <a class="bouton bouton-primaire" href="/app/inscription">Essayer gratuitement</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="contenu" class="conteneur devis-public">
+      <p id="etat" role="status">Chargement de la facture…</p>
+      <article id="facture" aria-labelledby="titre-facture" hidden>
+        <h1 id="titre-facture"></h1>
+        <p id="parties" class="devis-parties"></p>
+        <div class="tableau-conteneur">
+          <table class="tableau devis-lignes">
+            <caption class="visuellement-cache">
+              Montants de la facture
+            </caption>
+            <tbody>
+              <tr>
+                <th scope="row">Total HT</th>
+                <td class="num" id="total-ht"></td>
+              </tr>
+              <tr>
+                <th scope="row">TVA</th>
+                <td class="num" id="total-tva"></td>
+              </tr>
+              <tr>
+                <th scope="row">Total TTC</th>
+                <td class="num" id="total-ttc"></td>
+              </tr>
+              <tr class="devis-total">
+                <th scope="row">Reste à payer</th>
+                <td class="num" id="reste"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p><a id="pdf" class="bouton" target="_blank" rel="noopener">Télécharger la facture (Factur-X)</a></p>
+        <div id="paiement" class="devis-decision" hidden>
+          <h2>Payer en ligne</h2>
+          <p>Paiement par carte sécurisé par Stripe, sur le compte de l'émetteur.</p>
+          <p id="erreur" class="erreur" role="alert" hidden></p>
+          <div class="rangee">
+            <button type="button" id="payer" class="bouton bouton-primaire"></button>
+          </div>
+        </div>
+        <p id="reponse" class="devis-reponse" role="status" tabindex="-1" hidden></p>
+      </article>
+    </main>
+    <footer class="site-pied">
+      <div class="conteneur">
+        <span>auto, facturation et gestion pour indépendants et TPE</span>
+        <a href="mailto:contact@aphrody.com">contact@aphrody.com</a>
+        <a href="/tarifs">Tarifs</a>
+        <a href="/mentions-legales">Mentions légales</a>
+        <a href="/confidentialite" aria-current="page">Confidentialité</a>
+      </div>
+    </footer>
+    <script type="module" src="../src/site/facture.ts"></script>
+  </body>
+</html>

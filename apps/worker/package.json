@@ -1,0 +1,21 @@
+{
+  "name": "@auto/worker",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "worker": "bun src/index.ts"
+  },
+  "dependencies": {
+    "@auto/automate": "workspace:*",
+    "@auto/domain": "workspace:*",
+    "@auto/mail": "workspace:*",
+    "@auto/pa": "workspace:*",
+    "@auto/services": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@auto/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@auto/api": "workspace:*"
+  }
+}

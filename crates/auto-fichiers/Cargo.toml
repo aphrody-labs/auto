@@ -1,0 +1,28 @@
+[package]
+name = "auto-fichiers"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Fichiers des automatisations : PDF (fusion, pages, texte, caviardage, signature), Word (gabarit, création, export PDF), présentations"
+
+[dependencies]
+deckcraft-model.workspace = true
+deckcraft-pdf.workspace = true
+deckcraft-pptx.workspace = true
+pdfcraft-annot.workspace = true
+pdfcraft-cos.workspace = true
+pdfcraft-organize.workspace = true
+pdfcraft-redact.workspace = true
+pdfcraft-render.workspace = true
+pdfcraft-sign.workspace = true
+wordcraft-doc.workspace = true
+wordcraft-docx.workspace = true
+wordcraft-pdf.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+auto-docs = { path = "../auto-docs" }
+auto-modele = { path = "../auto-modele" }

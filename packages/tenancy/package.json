@@ -1,0 +1,24 @@
+{
+  "name": "@auto/tenancy",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./droits": "./src/droits.ts",
+    "./segments": "./src/segments.ts"
+  },
+  "dependencies": {
+    "@auto/domain": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@better-auth/api-key": "1.7.16",
+    "@better-auth/cimd": "1.7.16",
+    "@better-auth/mcp": "1.7.16",
+    "@better-auth/oauth-provider": "1.7.16",
+    "@better-auth/passkey": "1.7.16",
+    "@better-auth/utils": "0.5.1",
+    "better-auth": "1.7.16",
+    "jose": "6.2.13",
+    "kysely": "0.29.7"
+  }
+}

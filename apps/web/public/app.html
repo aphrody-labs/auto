@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#056b5b" />
+    <!-- Application installable : liens ajoutés au chargement (servis par le serveur, pas par le bundler). -->
+    <script>
+      for (const [rel, href] of [
+        ["manifest", "/manifest.webmanifest"],
+        ["apple-touch-icon", "/icones/180.png"],
+      ])
+        document.head.append(Object.assign(document.createElement("link"), { rel, href }));
+    </script>
+    <!-- Thème imposé appliqué avant le premier rendu (pas de flash) ; le reste de la logique est chargé ensuite. -->
+    <script>
+      try {
+        const t = localStorage.getItem("auto-theme");
+        if (t === "clair" || t === "sombre") document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <meta name="robots" content="noindex" />
+    <title>auto</title>
+    <link rel="stylesheet" href="../src/styles/app.css" />
+    <link rel="stylesheet" href="../src/styles/responsive.css" />
+    <!-- Corps de texte (Inter 400, latin) : URL à empreinte vérifiée par serveur.test.ts. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/polices/inter-latin-400-normal-8909904ab6.woff2"
+    />
+  </head>
+  <body>
+    <div id="racine"></div>
+    <noscript>L'application auto nécessite JavaScript.</noscript>
+    <script type="module" src="../src/client/main.tsx"></script>
+  </body>
+</html>

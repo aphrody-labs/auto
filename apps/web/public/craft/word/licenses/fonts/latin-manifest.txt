@@ -1,0 +1,4 @@
+# Latin document fonts reuse the canonical Aphrody M3 font resources and their pinned notices.
+# family | style | file | scripts | licence | licence file | sha256 | source
+Roboto Flex | Regular | packages/m3-fonts/fonts/RobotoFlex-Variable.ttf | Latn | OFL-1.1 | packages/m3-fonts/fonts/RobotoFlex-OFL.txt | 9b523f7d82593df0107173849ebb8c817471a1df4b4fb2c3cbf40cfd810c8281 | https://github.com/aphrody-labs/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/robotoflex
+Roboto Mono | Regular | packages/m3-fonts/fonts/RobotoMono-Variable.ttf | Latn | OFL-1.1 | packages/m3-fonts/fonts/RobotoMono-OFL.txt | 66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b | https://github.com/aphrody-labs/fonts/tree/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/robotomono

@@ -1,0 +1,9 @@
+{
+  "name": "auto",
+  "version": "0.1.0",
+  "description": "Gestion d'entreprise auto (devis, factures Factur-X, paiements, relances, factures reçues, absences) depuis Claude Code : serveur MCP distant d'auto, connexion OAuth à votre compte.",
+  "author": { "name": "Aphrody", "email": "contact@aphrody.com" },
+  "homepage": "https://auto.aphrody.com",
+  "license": "UNLICENSED",
+  "keywords": ["facturation", "factur-x", "gestion", "mcp"]
+}

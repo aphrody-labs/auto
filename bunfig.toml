@@ -1,0 +1,8 @@
+[test]
+root = "."
+pathIgnorePatterns = ["vendor/**", "target/**", ".claude/**"]
+
+# HTML importés par Bun.serve (apps/web) : Tailwind v4 sur le moteur Oxide, preset Material 3.
+[serve.static]
+# Polices Fontsource en fichiers WOFF2 à empreinte servis par /polices (apps/web/src/polices.ts), pas en base64 dans la CSS.
+plugins = ["@aphrody/bun-plugin-tailwind", "./apps/web/src/polices.ts"]

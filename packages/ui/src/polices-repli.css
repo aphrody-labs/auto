@@ -1,0 +1,20 @@
+/* Polices de repli aux métriques d'Inter et de Plus Jakarta Sans (Arial ou Liberation Sans ajustées) : le texte
+   affiché avant le chargement des WOFF2 (font-display: swap) occupe déjà la même place, sans décalage (CLS).
+   Valeurs mesurées sur les fichiers Fontsource latin : largeur moyenne pondérée par la fréquence des lettres en
+   français rapportée à Liberation Sans (métriques d'Arial), ascendante et descendante hhea divisées par ce rapport. */
+@font-face {
+  font-family: "Inter repli";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("Helvetica");
+  size-adjust: 107%;
+  ascent-override: 90.54%;
+  descent-override: 22.54%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans repli";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("Arial");
+  size-adjust: 100.05%;
+  ascent-override: 103.75%;
+  descent-override: 22.19%;
+  line-gap-override: 0%;
+}

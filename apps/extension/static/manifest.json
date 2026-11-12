@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "auto : factures fournisseurs",
+  "short_name": "auto",
+  "version": "0.1.0",
+  "description": "Envoie en un clic droit une facture PDF ou Factur-X à auto, et affiche les factures fournisseurs à vérifier.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "auto",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": false
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "contextMenus", "storage", "alarms", "notifications"],
+  "host_permissions": ["https://auto.aphrody.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"]
+}

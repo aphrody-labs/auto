@@ -1,0 +1,120 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: aphrody-labs/bun/.github/actions/setup-bun@836a27a304c16d4b4330d03282baa1315f17b048 # main 2026-10-22
+        with:
+          bun-version: 1.4.6
+      - name: Suite Aphrody (clone partiel épinglé)
+        run: bun scripts/vendor-suite.ts
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'vendor/suite.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+      - run: rustup component add clippy rustfmt
+      - run: cargo fmt -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo build --release -p auto-ffi
+      - run: mkdir -p dist/native/linux-x64 && cp target/release/libauto_ffi.so dist/native/linux-x64/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-linux-x64
+          path: dist/native/linux-x64/libauto_ffi.so
+          retention-days: 7
+          if-no-files-found: error
+
+  bun:
+    needs: rust
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: auto
+          POSTGRES_PASSWORD: auto
+          POSTGRES_DB: auto
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U auto"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: native-linux-x64
+          path: dist/native/linux-x64
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: canary
+      - run: bun --version
+      - run: bun install --frozen-lockfile
+      # Base de test : branche Neon éphémère de la production (expire en 24 h, supprimée en fin de job) quand
+      # le secret NEON_API_KEY est disponible ; sinon le service postgres ci-dessus (forks, Dependabot).
+      - name: Base de test
+        id: base
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_ORG_ID: ${{ vars.NEON_ORG_ID }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCHE: ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          if [ -n "$NEON_API_KEY" ]; then
+            bun scripts/neon.ts branche-creer "$BRANCHE" --ttl-heures=24 --env="$GITHUB_ENV" --direct --masquer
+            echo "neon=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "DATABASE_URL=postgres://auto:auto@localhost:5433/auto" >> "$GITHUB_ENV"
+          fi
+      - run: bun run migrate
+      - run: bun check
+      - run: bun lint apps packages scripts
+      - run: bun fmt --check apps packages scripts docs
+      - run: bun test --timeout 30000
+      - run: bun run build:standalone linux-x64
+      - run: AUTO_STANDALONE=dist/standalone/linux-x64/auto bun test scripts/standalone.test.ts --timeout 30000
+      - run: tar -czf dist/auto-linux-x64.tar.gz -C dist/standalone/linux-x64 .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: standalone-linux-x64
+          path: dist/auto-linux-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Suppression de la branche Neon
+        if: always() && steps.base.outputs.neon == '1'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_ORG_ID: ${{ vars.NEON_ORG_ID }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: bun scripts/neon.ts branche-supprimer "ci-${{ github.run_id }}-${{ github.run_attempt }}"

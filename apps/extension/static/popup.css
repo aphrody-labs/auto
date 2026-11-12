@@ -1,0 +1,115 @@
+/* Popup : jetons Material 3 de @auto/ui (tokens.css, copié à la construction), aucune couleur propre. */
+:root {
+  font-family: var(--auto-police-corps);
+  font-size: 16px;
+}
+body {
+  margin: 0;
+  width: 340px;
+  background: var(--auto-fond);
+  color: var(--auto-texte);
+  line-height: 1.5;
+}
+main {
+  display: grid;
+  gap: var(--auto-espace-4);
+  padding: var(--auto-espace-4);
+}
+h1 {
+  margin: 0;
+  font-family: var(--auto-police-titre);
+  font-size: var(--auto-taille-xl);
+  color: var(--auto-primaire);
+}
+h2 {
+  margin: 0;
+  font-size: var(--auto-taille-base);
+}
+#etat,
+form {
+  display: grid;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-4);
+  background: var(--auto-surface);
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-lg);
+}
+#etat p {
+  margin: 0;
+}
+.champ {
+  display: grid;
+  gap: var(--auto-espace-1);
+}
+label {
+  font-weight: 600;
+  font-size: var(--auto-taille-sm);
+}
+input {
+  min-height: 44px;
+  padding: 0 var(--auto-espace-3);
+  font: inherit;
+  color: var(--auto-texte);
+  background: var(--auto-surface);
+  border: 1px solid var(--auto-bordure-controle);
+  border-radius: var(--auto-rayon-md);
+}
+input[aria-invalid="true"] {
+  border-color: var(--auto-danger);
+}
+.aide {
+  margin: 0;
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+.erreur {
+  margin: 0;
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-danger);
+}
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--auto-espace-4);
+  font: inherit;
+  font-weight: 600;
+  border-radius: var(--auto-rayon-pleine);
+  border: 1px solid var(--auto-bordure-controle);
+  color: var(--auto-primaire);
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.bouton-primaire {
+  color: var(--auto-sur-primaire);
+  background: var(--auto-primaire);
+  border-color: var(--auto-primaire);
+}
+.bouton:hover {
+  background: color-mix(in srgb, var(--auto-primaire) 8%, transparent);
+}
+.bouton-primaire:hover {
+  background: color-mix(in srgb, var(--auto-primaire) 88%, var(--auto-sur-primaire));
+}
+.bouton:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+:focus-visible {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+.visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+[hidden] {
+  display: none !important;
+}

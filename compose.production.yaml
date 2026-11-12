@@ -1,0 +1,90 @@
+# docker compose --env-file .env.production -f compose.production.yaml up -d
+name: auto
+x-app: &app
+  image: ${AUTO_IMAGE:-auto-app:production}
+  init: true
+  restart: unless-stopped
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:rw,nosuid,nodev,size=512m,mode=1777
+    - /home/auto:rw,nosuid,nodev,size=256m,uid=10001,gid=10001
+  stop_grace_period: 60s
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  environment: &env
+    NODE_ENV: production
+    DATABASE_URL: postgres://auto:${AUTO_DB_PASSWORD:?Définir AUTO_DB_PASSWORD}@postgres:5432/auto
+    AUTO_CLE_MAITRE: ${AUTO_CLE_MAITRE:?Définir AUTO_CLE_MAITRE}
+    AUTO_URL_APP: ${AUTO_URL_APP:?Définir AUTO_URL_APP}
+  env_file: ${AUTO_ENV_FILE:-.env.production}
+
+services:
+  postgres:
+    image: ${AUTO_POSTGRES_IMAGE:-postgres:18-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auto
+      POSTGRES_PASSWORD: ${AUTO_DB_PASSWORD:?Définir AUTO_DB_PASSWORD}
+      POSTGRES_DB: auto
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U auto -d auto"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api:
+    <<: *app
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    command: [bun, apps/api/src/index.ts]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: [bun, apps/worker/src/index.ts]
+    environment:
+      <<: *env
+      AUTO_API_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  web:
+    <<: *app
+    image: ${AUTO_WEB_IMAGE:-auto-web:production}
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+      target: web
+    env_file: []
+    command: [bun, apps/web/src/index.ts]
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      AUTO_API_URL: http://api:3000
+      AUTO_MEDIA_DIR: /mnt/media
+      AUTO_DISTRIBUTIONS_DIR: /mnt/distributions
+    volumes:
+      - ${AUTO_MEDIA_DIR:-./var/media}:/mnt/media:ro
+      - ${AUTO_DISTRIBUTIONS_DIR:-./var/distributions}:/mnt/distributions:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${AUTO_BIND:-127.0.0.1}:${AUTO_PORT:-3001}:3001"
+
+volumes:
+  postgres:

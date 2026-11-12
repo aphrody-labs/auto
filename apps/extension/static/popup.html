@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>auto : factures fournisseurs</title>
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>auto</h1>
+      <section id="etat" aria-live="polite" aria-labelledby="titre-etat">
+        <h2 id="titre-etat" class="visuellement-cache">État</h2>
+        <p id="resume">Chargement…</p>
+        <a id="ouvrir" class="bouton" target="_blank" rel="noopener" hidden>Ouvrir auto</a>
+      </section>
+      <form id="reglages" novalidate aria-labelledby="titre-reglages">
+        <h2 id="titre-reglages">Réglages</h2>
+        <div class="champ">
+          <label for="instance">Adresse de votre instance</label>
+          <input
+            id="instance"
+            name="instance"
+            type="url"
+            inputmode="url"
+            autocomplete="url"
+            required
+            aria-describedby="aide-instance"
+          />
+          <p class="aide" id="aide-instance">auto.aphrody.com, ou votre serveur auto-hébergé.</p>
+        </div>
+        <div class="champ">
+          <label for="jeton">Jeton API</label>
+          <input
+            id="jeton"
+            name="jeton"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            required
+            aria-describedby="aide-jeton"
+          />
+          <p class="aide" id="aide-jeton">Créez-le dans auto, Paramètres, Jetons API. Il reste sur cet appareil.</p>
+        </div>
+        <p id="erreur" class="erreur" role="alert" hidden></p>
+        <button type="submit" class="bouton bouton-primaire" id="enregistrer">Enregistrer et tester</button>
+      </form>
+      <p class="aide">Clic droit sur un lien de facture PDF ou XML : « Envoyer la facture à auto ».</p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

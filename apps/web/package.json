@@ -1,0 +1,48 @@
+{
+  "name": "@auto/web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/serveur.ts"
+  },
+  "scripts": {
+    "dev": "bun --cwd ../.. --hot apps/web/src/index.ts",
+    "start": "bun --cwd ../.. apps/web/src/index.ts",
+    "captures": "bun e2e/captures.ts",
+    "vitrine": "bun scripts/vitrine.ts"
+  },
+  "dependencies": {
+    "@aphrody/m3-react": "1.4.7",
+    "@aphrody/m3-tailwind": "1.4.7",
+    "@aphrody/m3-tokens": "1.4.7",
+    "@aphrody/material-web": "3.3.3",
+    "@auto/automate": "workspace:*",
+    "@auto/client": "workspace:*",
+    "@auto/domain": "workspace:*",
+    "@auto/tenancy": "workspace:*",
+    "@auto/ui": "workspace:*",
+    "@base-ui/react": "^1.9.0",
+    "@better-auth/api-key": "1.7.16",
+    "@better-auth/oauth-provider": "1.7.16",
+    "@better-auth/passkey": "1.7.16",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/material-symbols-rounded": "5.3.9",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "@xyflow/react": "^12.12.0",
+    "better-auth": "1.7.16",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@aphrody/bun-plugin-tailwind": "1.4.7",
+    "@auto/api": "workspace:*",
+    "@auto/billing": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "playwright-core": "1.64.1"
+  }
+}

@@ -1,0 +1,59 @@
+AUTO — SERVEUR AUTONOME
+
+Ce paquet contient le runtime, la bibliothèque native, les migrations et les
+ressources web/Craft. Conserver et extraire le dossier complet. Bun, Node et un
+gestionnaire de paquets JavaScript ne sont pas nécessaires sur la machine cible.
+
+Pour utiliser simplement le service Auto, ouvrir https://auto.aphrody.com/app
+ou installer l'application depuis https://auto.aphrody.com/telechargements.
+
+HEBERGER SA PROPRE INSTANCE
+
+1. Préparer une base PostgreSQL et son compte de migration. Les migrations
+   initiales créent le rôle auto_app : le compte utilisé doit y être autorisé.
+2. Fournir les variables d'environnement ci-dessous, avec vos propres valeurs.
+   Ne publier ni vos mots de passe ni la clé maître. Garder cette clé stable pour
+   relire les secrets chiffrés après redémarrage.
+
+   NODE_ENV=production
+   DATABASE_URL=postgres://auto:MOT_DE_PASSE@127.0.0.1:5432/auto
+   AUTO_CLE_MAITRE=VOTRE_CLE_ALEATOIRE_DE_64_CARACTERES_HEXADECIMAUX
+   AUTO_URL_APP=https://auto.votre-domaine.fr
+   AUTO_API_URL=http://127.0.0.1:3000
+   AUTO_BIND_HOST=127.0.0.1
+   AUTO_SMTP_HOTE=smtp.votre-domaine.fr
+   AUTO_SMTP_PORT=587
+   AUTO_SMTP_SECURITE=starttls
+   AUTO_SMTP_UTILISATEUR=auto@votre-domaine.fr
+   AUTO_SMTP_MOT_DE_PASSE=VOTRE_SECRET
+
+   Sous Linux, utiliser export NOM=valeur dans le shell ou votre gestionnaire de
+   services. Sous PowerShell, utiliser $env:NOM='valeur' dans chaque terminal.
+
+3. Lancer les migrations : ./auto migrate (Linux) ou .\auto.exe migrate (Windows).
+4. Lancer trois processus distincts, avec le même environnement :
+   - PORT=3000 : auto api
+   - auto worker
+   - PORT=3001 : auto web
+   Sous PowerShell, définir $env:PORT='3000' ou '3001' avant la commande.
+5. Configurer votre reverse proxy HTTPS vers le front local sur le port 3001.
+   L'API et PostgreSQL restent sur le réseau privé. L'inscription crée une
+   entreprise ; les collègues la rejoignent via les invitations de l'équipe.
+
+La clé maître, le relais mail réel et l'URL publique sont nécessaires en
+production. OAuth Google/Microsoft, stockage documentaire, IA et intégrations
+externes se configurent séparément. Les fonctions OCR/conversion utilisent
+Chromium, Tesseract et Poppler lorsqu'elles en ont besoin ; leurs exécutables
+restent des dépendances de l'hôte. auto outils donne les diagnostics disponibles.
+
+VERIFICATION ET MISE A NIVEAU
+
+SHA256SUMS.json contient les empreintes des fichiers du paquet. Comparer aussi
+le SHA-256 de l'archive au catalogue public avant extraction. Sauvegarder la base
+et les documents avant une nouvelle version ; un retour à un ancien binaire ne
+restaure pas un schéma déjà migré. Les services doivent être supervisés et
+redémarrés avec leur environnement privé conservé.
+
+LICENSE et NOTICE accompagnent le projet. Les notices des distributions Craft
+sont présentes dans public/craft. Sources et documentation :
+https://github.com/aphrody-labs/auto

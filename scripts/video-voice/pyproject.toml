@@ -1,0 +1,15 @@
+[project]
+name = "auto-video-voice"
+version = "0.1.0"
+description = "Voix locale en français pour la vidéo de présentation Auto"
+requires-python = ">=3.12,<3.13"
+dependencies = ["chatterbox-tts==0.1.7", "torch==2.6.0", "torchaudio==2.6.0"]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", marker = "sys_platform == 'win32'" }]
+torchaudio = [{ index = "pytorch-cu124", marker = "sys_platform == 'win32'" }]

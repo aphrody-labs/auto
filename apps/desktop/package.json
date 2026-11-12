@@ -1,0 +1,12 @@
+{
+  "name": "@auto/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+    "icones": "cargo tauri icon icone.svg -o src-tauri/icons"
+  }
+}

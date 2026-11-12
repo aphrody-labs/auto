@@ -1,0 +1,90 @@
+[package]
+name = "aphrody-box"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Console d'administration de l'Aphrody Box (Leptos, rendu serveur et hydratation WebAssembly)"
+
+# Projet autonome, hors du workspace d'auto : son arbre (Leptos, axum) ne touche ni le Cargo.lock ni l'image native.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "aphrody-box"
+path = "src/main.rs"
+required-features = ["ssr"]
+
+[dependencies]
+leptos = "0.8"
+leptos_meta = "0.8"
+serde = { version = "1", features = ["derive"] }
+
+console_error_panic_hook = { version = "0.1", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+
+axum = { version = "0.8", optional = true }
+leptos_axum = { version = "0.8", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "fs"], optional = true }
+hyper = { version = "1", features = ["client", "http1"], optional = true }
+hyper-util = { version = "0.1", features = ["tokio"], optional = true }
+http-body-util = { version = "0.1", optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream"], optional = true }
+futures-util = { version = "0.3", optional = true }
+serde_json = { version = "1", optional = true }
+hmac = { version = "0.12", optional = true }
+sha2 = { version = "0.10", optional = true }
+base64 = { version = "0.22", optional = true }
+getrandom = { version = "0.3", optional = true }
+bcrypt = { version = "0.17", optional = true }
+libc = { version = "0.2", optional = true }
+
+[features]
+hydrate = ["leptos/hydrate", "dep:console_error_panic_hook", "dep:wasm-bindgen"]
+ssr = [
+  "leptos/ssr",
+  "leptos_meta/ssr",
+  "dep:leptos_axum",
+  "dep:axum",
+  "dep:tokio",
+  "dep:hyper",
+  "dep:hyper-util",
+  "dep:http-body-util",
+  "dep:reqwest",
+  "dep:futures-util",
+  "dep:serde_json",
+  "dep:hmac",
+  "dep:sha2",
+  "dep:base64",
+  "dep:getrandom",
+  "dep:bcrypt",
+  "dep:libc",
+]
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+panic = "abort"
+
+[package.metadata.leptos]
+output-name = "aphrody-box"
+site-root = "target/site"
+site-pkg-dir = "pkg"
+style-file = "style/console.css"
+assets-dir = "public"
+site-addr = "0.0.0.0:8080"
+reload-port = 3011
+env = "PROD"
+bin-features = ["ssr"]
+bin-default-features = false
+lib-features = ["hydrate"]
+lib-default-features = false
+lib-profile-release = "wasm-release"

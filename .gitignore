@@ -1,0 +1,20 @@
+node_modules
+target
+data
+*.sqlite
+vendor/bun-distribution
+.cache
+dist
+# Python environment and caches for the local video voice tool.
+/scripts/video-voice/.venv/
+/scripts/video-voice/__pycache__/
+/scripts/video-voice/.pytest_cache/
+/scripts/video-voice/.ruff_cache/
+.claude/
+apps/desktop/src-tauri/gen
+var/
+.env
+.env.*
+!.env.example
+!.env.*.example
+.neon

@@ -1,0 +1,507 @@
+/* Coque de l'application : barre latérale à partir de 1024 px, barre supérieure et tiroir en dessous. */
+@import "@auto/ui/base.css";
+@import "./automatisations.css";
+@import "./chantiers.css";
+@import "./atelier.css";
+@import "./courrier.css";
+@import "./import-fichiers.css";
+
+.coque {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+}
+@media (min-width: 1024px) {
+  .coque {
+    grid-template-columns: 248px 1fr;
+    grid-template-rows: 1fr;
+  }
+}
+
+.barre-haut {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  min-height: 56px;
+  padding: 0 var(--auto-espace-2);
+  background: var(--auto-surface);
+  border-bottom: 1px solid var(--auto-bordure);
+}
+@media (min-width: 1024px) {
+  .barre-haut {
+    display: none;
+  }
+}
+
+.marque {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  font: 700 var(--auto-taille-lg) var(--auto-police-titre);
+  color: var(--auto-texte);
+  text-decoration: none;
+}
+.marque-logo {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-primaire);
+  color: var(--auto-sur-primaire);
+}
+
+.navigation {
+  display: none;
+  flex-direction: column;
+  gap: var(--auto-espace-1);
+  padding: var(--auto-espace-4) var(--auto-espace-3);
+  background: var(--auto-surface);
+  border-right: 1px solid var(--auto-bordure);
+}
+.navigation[data-ouverte="true"] {
+  display: flex;
+  position: fixed;
+  inset: 56px 0 0 0;
+  z-index: 20;
+  overflow-y: auto;
+}
+@media (min-width: 1024px) {
+  .navigation,
+  .navigation[data-ouverte="true"] {
+    display: flex;
+    position: sticky;
+    top: 0;
+    inset: auto;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+}
+.navigation .marque {
+  display: none;
+  padding: var(--auto-espace-2) var(--auto-espace-3) var(--auto-espace-4);
+}
+@media (min-width: 1024px) {
+  .navigation .marque {
+    display: inline-flex;
+  }
+}
+.nav-titre {
+  margin: var(--auto-espace-4) var(--auto-espace-3) var(--auto-espace-1);
+  font-size: var(--auto-taille-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--auto-texte-attenue);
+}
+.nav-lien {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+  min-height: 44px;
+  padding: 0 var(--auto-espace-3);
+  border-radius: var(--auto-rayon-pleine);
+  color: var(--auto-texte);
+  text-decoration: none;
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.nav-lien:hover {
+  background: color-mix(in srgb, var(--auto-texte) 8%, transparent);
+}
+.nav-lien[aria-current="page"] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
+}
+.nav-pied {
+  margin-top: auto;
+  display: grid;
+  gap: var(--auto-espace-1);
+  padding-top: var(--auto-espace-4);
+  border-top: 1px solid var(--auto-bordure);
+}
+.nav-entreprise {
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  font-size: var(--auto-taille-sm);
+}
+.nav-entreprise strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.principal {
+  min-width: 0;
+  padding: var(--auto-espace-4);
+}
+@media (min-width: 768px) {
+  .principal {
+    padding: var(--auto-espace-6) var(--auto-espace-8);
+  }
+}
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--auto-espace-6);
+}
+.page-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--auto-espace-3);
+}
+.page-entete h1 {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+}
+.fil {
+  font-size: var(--auto-taille-sm);
+}
+
+/* Indicateurs du tableau de bord. */
+.kpis {
+  display: grid;
+  gap: var(--auto-espace-4);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.kpi {
+  display: grid;
+  gap: var(--auto-espace-1);
+}
+.kpi-libelle {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+.kpi-valeur {
+  font: 600 var(--auto-taille-xl) / 1.25 var(--auto-police-corps);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-detail {
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+
+/* Éditeur de lignes : mises en page par requêtes de conteneur (la largeur utile dépend de la barre latérale). */
+.lignes {
+  display: grid;
+  gap: var(--auto-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  container-type: inline-size;
+}
+.ligne-doc {
+  display: grid;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-3);
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-fond);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (min-width: 480px) {
+  .ligne-doc {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+.ligne-doc .designation {
+  grid-column: 1 / -1;
+}
+.ligne-doc .actions-ligne {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+@container (min-width: 760px) {
+  .ligne-doc {
+    grid-template-columns: 72px 72px minmax(88px, 1fr) 72px 88px minmax(96px, 1fr) auto;
+    align-items: end;
+  }
+  .ligne-doc .actions-ligne {
+    grid-column: auto;
+  }
+}
+.total-ligne {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.page {
+  container-type: inline-size;
+}
+.editeur {
+  display: grid;
+  gap: var(--auto-espace-6);
+}
+.editeur > * {
+  min-width: 0;
+}
+@container (min-width: 880px) {
+  .editeur {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    align-items: start;
+  }
+  .totaux {
+    position: sticky;
+    top: var(--auto-espace-6);
+  }
+}
+.totaux {
+  display: grid;
+  gap: var(--auto-espace-4);
+}
+.totaux h2 {
+  margin: 0;
+}
+.nav-pied .bouton {
+  justify-content: flex-start;
+  padding: 0 var(--auto-espace-3);
+}
+.totaux dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--auto-espace-2) var(--auto-espace-4);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.totaux dt {
+  color: var(--auto-texte-attenue);
+}
+.totaux dd {
+  margin: 0;
+  text-align: right;
+}
+.totaux .ttc {
+  font-size: var(--auto-taille-lg);
+  font-weight: 700;
+  color: var(--auto-texte);
+  padding-top: var(--auto-espace-2);
+  border-top: 1px solid var(--auto-bordure);
+}
+
+/* Écrans d'authentification et d'onboarding. */
+.auth {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--auto-espace-4);
+}
+.auth-carte {
+  width: min(560px, 100%);
+}
+.auth-carte .marque {
+  margin-bottom: var(--auto-espace-6);
+}
+
+.resume dl {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: var(--auto-espace-2) var(--auto-espace-4);
+  margin: 0;
+}
+.resume dt {
+  color: var(--auto-texte-attenue);
+  font-size: var(--auto-taille-sm);
+}
+@media (max-width: 479px) {
+  .resume dl {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .resume dd {
+    margin-bottom: var(--auto-espace-2);
+  }
+}
+.resume dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.jeton {
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  overflow-wrap: anywhere;
+  padding: var(--auto-espace-3);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-surface-alt);
+}
+
+/* Utilitaires des écrans. */
+.rangee-bas {
+  align-items: flex-end;
+}
+/* Jamais de défilement horizontal de la page : les filtres défilent dans leur propre bande. */
+.rangee > * {
+  min-width: 0;
+}
+.rangee > .onglets {
+  flex: 1 1 320px;
+}
+.rangee > .champ {
+  flex: 1 1 220px;
+}
+.contents {
+  display: contents;
+}
+.pile-serree {
+  display: grid;
+  gap: var(--auto-espace-3);
+}
+.pile-serree > h2 {
+  margin: 0;
+}
+.petit {
+  font-size: var(--auto-taille-sm);
+}
+.texte-danger {
+  color: var(--auto-danger);
+}
+.libelle-statique {
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.onglet[aria-pressed="true"] {
+  color: var(--auto-primaire);
+  border-bottom-color: var(--auto-primaire);
+}
+
+.totaux-fiche {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--auto-espace-2) var(--auto-espace-4);
+  margin: 0 0 0 auto;
+  min-width: min(320px, 100%);
+  font-variant-numeric: tabular-nums;
+}
+.totaux-fiche dt {
+  color: var(--auto-texte-attenue);
+}
+.totaux-fiche dd {
+  margin: 0;
+  text-align: right;
+}
+.totaux-fiche .ttc {
+  font-weight: 700;
+  color: var(--auto-texte);
+  padding-top: var(--auto-espace-2);
+  border-top: 1px solid var(--auto-bordure);
+}
+.resume-quotas {
+  display: grid;
+  grid-template-columns: minmax(160px, auto) 1fr;
+  gap: var(--auto-espace-2) var(--auto-espace-4);
+  margin: 0;
+}
+.resume-quotas dt {
+  color: var(--auto-texte-attenue);
+}
+.resume-quotas dd {
+  margin: 0;
+}
+
+/* Onboarding : connexions à venir. */
+.liste-connexions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--auto-espace-3);
+}
+.liste-connexions li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--auto-espace-3);
+  align-items: start;
+  padding: var(--auto-espace-4);
+}
+.liste-connexions p {
+  margin: var(--auto-espace-1) 0 0;
+  font-size: var(--auto-taille-sm);
+}
+.pastille-etat {
+  padding: 2px var(--auto-espace-3);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--auto-statut-depose-fond);
+  color: var(--auto-statut-depose-texte);
+  font-size: var(--auto-taille-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Gabarit. */
+.pipette {
+  width: 56px;
+  min-height: 44px;
+  padding: 2px;
+  border: 1px solid var(--auto-bordure-controle);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-surface);
+  cursor: pointer;
+}
+.apercu-logo {
+  max-height: 48px;
+  max-width: 160px;
+  border-radius: var(--auto-rayon-sm);
+}
+.apercu-gabarit {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-4);
+  border: 1px solid var(--auto-bordure);
+  border-top: 4px solid var(--auto-primaire);
+  border-radius: var(--auto-rayon-md);
+  /* Aperçu du papier : toujours clair, comme le PDF, quel que soit le thème. */
+  color-scheme: light;
+  background: Canvas;
+  color: CanvasText;
+}
+label.bouton {
+  cursor: pointer;
+}
+label.bouton:focus-within {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+span.bouton[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lien-partage {
+  overflow-wrap: anywhere;
+}
+/* Marques officielles, sans filtre ni recoloration ; dimensions réservées dès le premier rendu. */
+.logo-fournisseur {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+}
+/* Places des boutons Google/Microsoft tant que les méthodes ne sont pas connues (même hauteur, invisibles). */
+.connexion-attente {
+  visibility: hidden;
+}
+.connexion-fournisseur {
+  justify-content: center;
+  gap: 10px;
+}

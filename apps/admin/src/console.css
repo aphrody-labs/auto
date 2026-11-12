@@ -1,0 +1,27 @@
+/* Console opérateur : base commune du front (jetons @auto/ui, composants). */
+@import "@auto/ui/base.css";
+
+.console {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--auto-espace-6) var(--auto-espace-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--auto-espace-6);
+}
+.console-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--auto-espace-3);
+}
+.console-entete h1 {
+  flex: 1;
+  margin: 0;
+}
+.manquants li {
+  margin-bottom: var(--auto-espace-2);
+}
+.manquants code {
+  font-size: var(--auto-taille-sm);
+}

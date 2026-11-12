@@ -1,0 +1,44 @@
+feature,area,priority,original,clone,notes
+Créer facture,documents,must,oui,yes,éditeur /app/documents/nouveau
+Créer devis,documents,must,oui,yes,validité en jours
+Convertir devis en facture,documents,must,oui,yes,devisVersFacture
+Avoir total,documents,must,oui,yes,avoirTotal
+Avoir partiel,documents,must,oui,yes,avoirs partiels (README)
+Facture d'acompte,documents,must,oui,yes,type acompte
+Numérotation sans trou,documents,must,oui,yes,store
+Mentions légales automatiques,documents,must,oui,yes,verifier / avecMentionsParDefaut
+Facture immuable après émission,documents,must,oui,yes,seul l'avoir corrige
+Export PDF Factur-X,e-facture,must,oui,yes,crate auto-facturx
+Raccordement plateforme agréée,e-facture,must,oui,partial,adaptateurs mock et B2Brouter ; bac à sable B2Brouter à qualifier (identifiants)
+Liste factures avec filtres statut,liste,must,oui,yes,ListeDocuments
+Statut en retard dérivé,liste,must,oui,yes,statutVisuel sur échéance
+Tableau de bord encours/retard/encaissé,pilotage,must,oui,yes,TableauDeBord
+Répertoire clients,clients,must,oui,yes,/app/clients
+Recherche SIREN,clients,must,oui,yes,/v1/siren
+Enregistrer un paiement,paiement,must,oui,yes,/v1/documents/:id/paiements
+Envoi par e-mail,envoi,must,oui,partial,/v1/documents/:id/envoyer ; relais SMTP de production à configurer
+Multi-tenant et rôles,compte,must,oui,yes,tenancy
+Journal d'audit vérifiable,conformité,must,non,yes,différenciant
+API publique /v1,api,must,partiel,yes,jetons et OpenAPI
+Remises ligne/globale,documents,should,oui,yes,éditeur
+Catalogue produits/services,catalogue,should,oui,yes,/app/produits
+Modèles de document (logo/couleurs/langue),paramètres,should,oui,partial,logo couleur pied de page ; pas de langue
+Relances automatiques,recouvrement,should,oui,yes,paliers J+7/J+30 par le worker
+Page publique devis (accepter/refuser),devis,should,oui,yes,lien signé /devis/<jeton> avec nom du signataire
+Signature électronique du devis,devis,should,oui,no,prestataire à choisir
+Paiement en ligne par carte,paiement,should,oui,yes,Stripe Checkout sur le compte de l'entreprise ; lien /facture/<jeton>
+Paiement partiel,paiement,should,oui,yes,reste dû
+Export comptable (FEC/CSV),compta,should,oui,yes,FEC journal des ventes créances
+Import clients CSV,clients,should,oui,yes,imports guidés Excel/CSV
+Facture proforma,documents,could,oui,no,
+Factures récurrentes,documents,could,oui,no,
+Multi-devises,documents,could,oui,no,EUR seulement
+Multi-langues,documents,could,oui,no,
+Échéances multiples,paiement,could,non,no,
+Application mobile native,mobile,could,oui,partial,APK Android (Tauri) construit ; publication Play Store à faire
+Connexion bancaire,compta,skip,oui,no,licence DSP2
+Télédéclaration URSSAF,compta,skip,oui,no,partenariat
+Gestion de projet et temps,projets,skip,oui,no,hors périmètre
+Factures fournisseurs reçues,achats,should,oui,yes,ajout : Factur-X OCR LLM extension Chrome écran Factures reçues
+Employés et congés,rh,could,non,yes,ajout
+CLI et serveur MCP,api,could,non,yes,ajout : apps/cli packages/agent apps/plugin

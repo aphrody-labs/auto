@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#056b5b" />
+    <!-- Application installable : liens ajoutés au chargement (servis par le serveur, pas par le bundler). -->
+    <script>
+      for (const [rel, href] of [
+        ["manifest", "/manifest.webmanifest"],
+        ["apple-touch-icon", "/icones/180.png"],
+      ])
+        document.head.append(Object.assign(document.createElement("link"), { rel, href }));
+    </script>
+    <!-- Thème imposé appliqué avant le premier rendu (pas de flash) : data-theme pour les jetons, .dark/.light pour Tailwind. -->
+    <script>
+      try {
+        const t = localStorage.getItem("auto-theme");
+        if (t === "clair" || t === "sombre") {
+          document.documentElement.dataset.theme = t;
+          document.documentElement.classList.add(t === "sombre" ? "dark" : "light");
+        }
+      } catch {}
+    </script>
+    <meta
+      name="description"
+      content="auto accompagne les artisans et petites entreprises du BTP : devis, factures, achats fournisseurs, chantiers et recherche de documents, au bureau comme sur le terrain."
+    />
+    <meta property="og:title" content="auto · Devis, factures et suivi de chantiers pour le BTP" />
+    <meta
+      property="og:description"
+      content="Devis, factures, achats et documents : gardez le fil de vos chantiers, au même endroit. Découvrez les écrans réels d’auto et commencez dans votre navigateur."
+    />
+    <title>auto · Devis, factures et suivi de chantiers pour le BTP</title>
+    <link rel="canonical" href="https://auto.aphrody.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="auto" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:url" content="https://auto.aphrody.com/" />
+    <meta property="og:image" content="https://auto.aphrody.com/img/og-auto.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="629" />
+    <meta property="og:image:alt" content="Le dossier d’un chantier dans auto : ventes, achats et suivi." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="../src/styles/accueil.css" />
+    <!-- Faces visibles dès le premier écran (titre et corps, latin) : URL à empreinte vérifiées par serveur.test.ts. -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/polices/plus-jakarta-sans-latin-700-normal-2050755bf4.woff2"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/polices/inter-latin-400-normal-8909904ab6.woff2"
+    />
+    <!-- Fond du héros (élément LCP) découvert avant le rendu React : même srcset que site/medias.tsx (serveur.test.ts). -->
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      fetchpriority="high"
+      imagesrcset="/img/v/btp-plan-768-139c24c163.avif 768w, /img/v/btp-plan-1536-33f2c3b4b1.avif 1536w"
+      imagesizes="100vw"
+    />
+  </head>
+  <body>
+    <div id="racine">
+      <noscript>
+        <p style="padding: 2rem; font-family: system-ui, sans-serif">
+          auto, la gestion des artisans et petites entreprises du BTP : devis, factures, achats fournisseurs, chantiers
+          et documents au même endroit. Activez JavaScript pour afficher cette page, ou
+          <a href="/app/inscription">créez votre compte gratuit</a>.
+        </p>
+      </noscript>
+    </div>
+    <script type="module" src="../src/site/accueil-client.tsx"></script>
+  </body>
+</html>

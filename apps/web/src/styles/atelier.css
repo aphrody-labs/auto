@@ -1,0 +1,58 @@
+.atelier-frame {
+  width: 100%;
+  height: max(560px, calc(100dvh - 15rem));
+  border: 1px solid var(--auto-bordure);
+  border-radius: 12px;
+  background: var(--auto-surface);
+}
+.atelier-plein {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--auto-surface);
+  overflow: auto;
+  padding: 1rem;
+}
+.atelier-plein .atelier-frame {
+  height: calc(100dvh - 12rem);
+  min-height: 360px;
+}
+.atelier-versions {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+.atelier-versions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--auto-bordure);
+}
+@media (max-width: 600px) {
+  .atelier-bureau .page-entete {
+    align-items: stretch;
+  }
+  .atelier-bureau .page-entete h1 {
+    overflow-wrap: anywhere;
+  }
+  .atelier-frame {
+    height: calc(100dvh - 17rem);
+    min-height: 500px;
+  }
+  .atelier-plein {
+    padding: 0.5rem;
+  }
+}
+.atelier-document-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.atelier-format-icone {
+  flex: none;
+  color: var(--auto-primaire);
+}

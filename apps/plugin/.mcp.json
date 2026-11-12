@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "auto": {
+      "type": "http",
+      "url": "${AUTO_MCP_URL:-https://auto.aphrody.com/mcp}"
+    }
+  }
+}

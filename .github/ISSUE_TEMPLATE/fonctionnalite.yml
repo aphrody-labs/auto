@@ -1,0 +1,29 @@
+name: Fonctionnalité
+description: Proposer une évolution
+labels: [amélioration]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Besoin
+      description: Le problème de l'utilisateur, pas la solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposition
+    attributes:
+      label: Proposition
+  - type: textarea
+    id: criteres
+    attributes:
+      label: Critères d'acceptation
+      description: Comment vérifier que c'est fait.
+    validations:
+      required: true
+  - type: dropdown
+    id: domaine
+    attributes:
+      label: Domaine
+      options: [Facturation, Factur-X / PA, Mail, Bureautique, Vidéo, Employés, Agents / RAG, API, Autre]
+    validations:
+      required: true

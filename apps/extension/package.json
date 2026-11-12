@@ -1,0 +1,21 @@
+{
+  "name": "@auto/extension",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "bun scripts/construire.ts",
+    "paquet": "bun scripts/construire.ts --zip",
+    "captures": "bun scripts/captures.ts"
+  },
+  "dependencies": {
+    "@auto/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@auto/api": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@types/chrome": "^0.3.6",
+    "playwright-core": "1.64.1"
+  }
+}

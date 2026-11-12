@@ -1,0 +1,117 @@
+{
+  "id": "autoRelances0001",
+  "name": "auto : relances des factures impayées",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "connections": {
+    "Relance auto": {
+      "main": [
+        [
+          {
+            "node": "Vérifier la signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier la signature": {
+      "main": [
+        [
+          {
+            "node": "Dédoublonner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dédoublonner": {
+      "main": [
+        [
+          {
+            "node": "Préparer le mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer le mail": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "6a1d3c90-5e2f-4b7a-9c11-0a1b2c3d4f01",
+      "name": "Relance auto",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "9c2e4d61-7f3a-4e8b-b5c2-auto00relances",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-relances",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "6a1d3c90-5e2f-4b7a-9c11-0a1b2c3d4f02",
+      "name": "Vérifier la signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": "// Même vérification que auto-evenements : HMAC-SHA256 du corps re-sérialisé, seuls les événements relance.a_envoyer passent.\nconst crypto = require('crypto');\nconst secret = $env.N8N_WEBHOOK_SECRET;\nreturn $input.all().map((item) => {\n  const corps = JSON.stringify(item.json.body);\n  const attendu = 'sha256=' + crypto.createHmac('sha256', secret).update(corps).digest('hex');\n  const recu = String(item.json.headers['x-auto-signature'] ?? '');\n  if (recu.length !== attendu.length || !crypto.timingSafeEqual(Buffer.from(recu), Buffer.from(attendu))) {\n    throw new Error('signature invalide');\n  }\n  if (item.json.body.type !== 'relance.a_envoyer') throw new Error('événement inattendu : ' + item.json.body.type);\n  return { json: item.json.body };\n});"
+      }
+    },
+    {
+      "id": "6a1d3c90-5e2f-4b7a-9c11-0a1b2c3d4f03",
+      "name": "Dédoublonner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 0],
+      "parameters": {
+        "jsCode": "// Livraison au moins une fois : un événement déjà vu (même id) n'envoie pas un second mail.\n// Données statiques conservées entre exécutions du workflow publié ; purge après 30 jours.\nconst vus = $getWorkflowStaticData('global');\nvus.ids = vus.ids ?? {};\nconst limite = Date.now() - 30 * 86400000;\nfor (const [id, t] of Object.entries(vus.ids)) if (t < limite) delete vus.ids[id];\nconst nouveaux = [];\nfor (const item of $input.all()) {\n  if (vus.ids[item.json.id]) continue;\n  vus.ids[item.json.id] = Date.now();\n  nouveaux.push(item);\n}\nreturn nouveaux;"
+      }
+    },
+    {
+      "id": "6a1d3c90-5e2f-4b7a-9c11-0a1b2c3d4f04",
+      "name": "Préparer le mail",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0],
+      "parameters": {
+        "jsCode": "// Objet et texte selon le palier (J+7, J+30, J+60) ; sans adresse du client, rien n'est envoyé.\n// Relance déjà envoyée par auto depuis la boîte de l'entreprise (envoyeParMail) : rien à faire ici.\nconst OBJETS = {\n  1: (n) => `Rappel : facture ${n} échue`,\n  2: (n) => `Deuxième relance : facture ${n} impayée`,\n  3: (n) => `Mise en demeure : facture ${n}`,\n};\nconst euros = (c) => (c / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });\nreturn $input.all()\n  .filter((item) => item.json.data?.client?.email && !item.json.data?.envoyeParMail)\n  .map((item) => {\n    const d = item.json.data;\n    return {\n      json: {\n        evenementId: item.json.id,\n        tenantId: item.json.tenantId,\n        documentId: d.documentId,\n        niveau: d.niveau,\n        a: d.client.email,\n        objet: OBJETS[d.niveau](d.numero),\n        texte:\n          `Bonjour,\\n\\nSauf erreur de notre part, la facture ${d.numero} arrivée à échéance le ${d.echeance} ` +\n          `reste impayée : ${euros(d.resteCents)} (${d.joursRetard} jours de retard).\\n` +\n          `Merci de procéder à son règlement dans les meilleurs délais.\\n\\nCordialement`,\n      },\n    };\n  });"
+      }
+    },
+    {
+      "id": "6a1d3c90-5e2f-4b7a-9c11-0a1b2c3d4f05",
+      "name": "Envoyer le mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [960, 0],
+      "disabled": true,
+      "notes": "Désactivé par défaut : choisir une credential SMTP, définir AUTO_MAIL_FROM, puis activer le nœud.",
+      "parameters": {
+        "fromEmail": "={{ $env.AUTO_MAIL_FROM }}",
+        "toEmail": "={{ $json.a }}",
+        "subject": "={{ $json.objet }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texte }}",
+        "options": {}
+      }
+    }
+  ]
+}

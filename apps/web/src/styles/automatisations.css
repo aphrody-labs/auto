@@ -1,0 +1,1305 @@
+/* Automatisations : liste, galerie, secrets, historique et éditeur plein écran (React Flow).
+   Couleurs : rôles M3 uniquement (containers primary/secondary/tertiary par catégorie de nœud). */
+@import "@fontsource/material-symbols-rounded/latin-400.css";
+@import "@xyflow/react/dist/style.css";
+
+.symbole-m3 {
+  font-family: "Material Symbols Rounded";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+.symbole-m3.icone {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Rôles de catégorie : conteneur et texte associé. */
+[data-role="primaire"] {
+  --flux-conteneur: var(--md-sys-color-primary-container);
+  --flux-sur-conteneur: var(--md-sys-color-on-primary-container);
+  --flux-accent: var(--md-sys-color-primary);
+}
+[data-role="secondaire"] {
+  --flux-conteneur: var(--md-sys-color-secondary-container);
+  --flux-sur-conteneur: var(--md-sys-color-on-secondary-container);
+  --flux-accent: var(--md-sys-color-secondary);
+}
+[data-role="tertiaire"] {
+  --flux-conteneur: var(--md-sys-color-tertiary-container);
+  --flux-sur-conteneur: var(--md-sys-color-on-tertiary-container);
+  --flux-accent: var(--md-sys-color-tertiary);
+}
+
+.flux-noeud-icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--auto-rayon-md);
+  background: var(--flux-conteneur);
+  color: var(--flux-sur-conteneur);
+}
+.flux-noeud-icone .symbole-m3 {
+  font-size: 22px;
+}
+
+/* ── Interrupteur (Base UI Switch), gabarit M3 ─────────────────────────── */
+.interrupteur {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-surface-container-highest);
+  cursor: pointer;
+  transition: background var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.interrupteur[data-checked] {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+}
+.interrupteur[data-disabled] {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.interrupteur-curseur {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  translate: 0 -50%;
+  transition:
+    left var(--auto-mouvement-rapide) var(--auto-mouvement-courbe),
+    width var(--auto-mouvement-rapide) var(--auto-mouvement-courbe),
+    height var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.interrupteur[data-checked] .interrupteur-curseur {
+  left: 22px;
+  width: 24px;
+  height: 24px;
+  background: var(--md-sys-color-on-primary);
+}
+.interrupteur:focus-visible {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+.flux-interrupteur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--auto-espace-3);
+  min-height: 44px;
+}
+.flux-interrupteur-libelle {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+
+/* ── Onglets (Base UI Tabs) ────────────────────────────────────────────── */
+.flux-onglets-liste {
+  position: relative;
+  display: flex;
+  gap: var(--auto-espace-1);
+  border-bottom: 1px solid var(--auto-bordure);
+  overflow-x: auto;
+}
+.flux-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  min-height: 44px;
+  padding: 0 var(--auto-espace-4);
+  border: 0;
+  background: none;
+  color: var(--auto-texte-attenue);
+  font: 500 var(--auto-taille-sm) var(--auto-police-corps);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.flux-onglet[data-active] {
+  color: var(--md-sys-color-primary);
+}
+.flux-onglet:focus-visible {
+  outline-offset: -2px;
+}
+.flux-onglet-indicateur {
+  position: absolute;
+  bottom: 0;
+  left: var(--active-tab-left);
+  width: var(--active-tab-width);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--md-sys-color-primary);
+  transition:
+    left var(--auto-mouvement-normal) var(--auto-mouvement-courbe),
+    width var(--auto-mouvement-normal) var(--auto-mouvement-courbe);
+}
+.flux-onglet-panneau {
+  padding-top: var(--auto-espace-4);
+}
+.flux-onglet-panneau:focus-visible {
+  outline-offset: -2px;
+}
+.flux-onglets-page {
+  margin-bottom: var(--auto-espace-2);
+}
+.flux-pastille {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: var(--auto-taille-xs);
+  font-variant-numeric: tabular-nums;
+}
+.flux-pastille .symbole-m3 {
+  font-size: 14px;
+}
+.flux-pastille[data-ton="erreur"] {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+.flux-pastille[data-ton="succes"] {
+  background: var(--auto-succes-container);
+  color: var(--auto-succes-on-container);
+}
+
+/* ── Statut d'exécution ────────────────────────────────────────────────── */
+.badge-execution {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 2px 6px;
+  border-radius: var(--auto-rayon-pleine);
+  font-size: var(--auto-taille-xs);
+  font-weight: 500;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.badge-execution .symbole-m3 {
+  font-size: 16px;
+}
+.badge-execution[data-statut="succes"] {
+  background: var(--auto-succes-container);
+  color: var(--auto-succes-on-container);
+}
+.badge-execution[data-statut="erreur"] {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+/* ── Liste et galerie ──────────────────────────────────────────────────── */
+.flux-cartes,
+.flux-galerie,
+.flux-secrets {
+  display: grid;
+  gap: var(--auto-espace-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flux-carte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-3);
+  transition: box-shadow var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.flux-carte:hover,
+.flux-carte:focus-within {
+  box-shadow: var(--auto-ombre-md);
+}
+.flux-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+}
+.flux-carte-textes {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  font-size: var(--auto-taille-sm);
+}
+.flux-carte-textes h3 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flux-carte-lien {
+  color: inherit;
+  text-decoration: none;
+}
+.flux-carte-lien:hover {
+  text-decoration: underline;
+}
+.flux-carte-description {
+  margin: 0;
+  color: var(--auto-texte-attenue);
+  font-size: var(--auto-taille-sm);
+}
+.flux-carte-pied {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  margin-top: auto;
+  padding-top: var(--auto-espace-3);
+  border-top: 1px solid var(--auto-bordure);
+  font-size: var(--auto-taille-sm);
+}
+.flux-carte:not([data-actif]) .flux-noeud-icone {
+  filter: saturate(0.3);
+}
+.flux-lien-discret {
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.flux-modele {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-2);
+}
+.flux-modele h3 {
+  margin: var(--auto-espace-2) 0 0;
+}
+.flux-modele p {
+  flex: 1;
+  font-size: var(--auto-taille-sm);
+}
+.flux-modele .bouton {
+  align-self: flex-start;
+}
+.flux-modele-chaine {
+  display: flex;
+  align-items: center;
+}
+.flux-modele-chaine .flux-noeud-icone {
+  width: 36px;
+  height: 36px;
+}
+.flux-modele-chaine .flux-noeud-icone + .flux-noeud-icone {
+  margin-left: 18px;
+  position: relative;
+}
+.flux-modele-chaine .flux-noeud-icone + .flux-noeud-icone::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 18px;
+  border-top: 2px solid var(--md-sys-color-outline-variant);
+}
+.flux-accueil {
+  display: grid;
+  gap: var(--auto-espace-4);
+}
+.flux-section-titre {
+  margin: var(--auto-espace-4) 0 0;
+}
+.flux-secret {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+}
+.flux-secret code {
+  font-size: var(--auto-taille-sm);
+  overflow-wrap: anywhere;
+}
+
+/* ── Historique ────────────────────────────────────────────────────────── */
+.flux-historique {
+  display: grid;
+  gap: var(--auto-espace-4);
+}
+@media (min-width: 900px) {
+  .flux-historique {
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    align-items: start;
+  }
+}
+.flux-historique-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flux-historique-element {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--auto-espace-3);
+  min-height: 56px;
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  border: 1px solid transparent;
+  border-radius: var(--auto-rayon-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.flux-historique-element:hover {
+  background: var(--md-sys-color-surface-container);
+}
+.flux-historique-element[aria-current="true"] {
+  border-color: var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.flux-historique-textes {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--auto-taille-sm);
+}
+.flux-etapes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flux-etape details {
+  border: 1px solid var(--auto-bordure);
+  border-left: 4px solid var(--auto-succes);
+  border-radius: var(--auto-rayon-md);
+  padding: 0 var(--auto-espace-3);
+}
+.flux-etape[data-statut="erreur"] details {
+  border-left-color: var(--md-sys-color-error);
+}
+.flux-etape summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-3);
+  min-height: 52px;
+  cursor: pointer;
+}
+.flux-etape-rang {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--md-sys-color-surface-container-high);
+  font-size: var(--auto-taille-xs);
+  font-weight: 600;
+}
+.flux-etape-nom {
+  display: flex;
+  flex: 1;
+  min-width: 160px;
+  flex-direction: column;
+  font-size: var(--auto-taille-sm);
+}
+.flux-etape-chiffres {
+  font-size: var(--auto-taille-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.flux-json {
+  max-height: 360px;
+  margin: 0 0 var(--auto-espace-3);
+  padding: var(--auto-espace-3);
+  overflow: auto;
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font:
+    12px/1.5 ui-monospace,
+    "Cascadia Code",
+    Consolas,
+    monospace;
+  white-space: pre;
+}
+
+/* ── Menu (Base UI Menu) ───────────────────────────────────────────────── */
+.menu-positionneur {
+  z-index: 60;
+}
+.menu {
+  min-width: 220px;
+  padding: var(--auto-espace-1) 0;
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--auto-ombre-lg);
+  outline: none;
+}
+.menu-element {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+  min-height: 44px;
+  padding: 0 var(--auto-espace-4);
+  font-size: var(--auto-taille-sm);
+  cursor: pointer;
+  outline: none;
+}
+.menu-element[data-highlighted] {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+}
+.menu-element[data-ton="danger"] {
+  color: var(--md-sys-color-error);
+}
+
+/* ── Éditeur plein écran ───────────────────────────────────────────────── */
+.flux-plein {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+}
+.flux-plein-etat {
+  align-items: center;
+  justify-content: center;
+  gap: var(--auto-espace-4);
+  padding: var(--auto-espace-6);
+}
+.flux-plein-etat > .pile {
+  width: min(480px, 100%);
+}
+.flux-barre {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-2);
+  min-height: 64px;
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+.flux-barre-titre {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 240px;
+  flex-direction: column;
+}
+.flux-barre-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-2);
+  padding-left: var(--auto-espace-2);
+  font-size: var(--auto-taille-xs);
+}
+.flux-titre-saisie {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--auto-espace-2);
+  border: 1px solid transparent;
+  border-radius: var(--auto-rayon-sm);
+  background: transparent;
+  color: inherit;
+  font: 600 var(--auto-taille-base) var(--auto-police-titre);
+}
+.flux-titre-workflow {
+  font-size: var(--auto-taille-lg);
+}
+.flux-titre-saisie:hover {
+  border-color: var(--md-sys-color-outline-variant);
+}
+.flux-titre-saisie:focus-visible {
+  border-color: var(--md-sys-color-primary);
+  outline: none;
+  background: var(--md-sys-color-surface);
+}
+.flux-puce-statique {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 4px;
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-weight: 500;
+}
+.flux-puce-statique .symbole-m3 {
+  font-size: 16px;
+}
+.flux-actif {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  padding: 0 var(--auto-espace-2);
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.flux-alerte {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--auto-espace-3);
+  width: min(640px, calc(100% - 32px));
+  translate: -50% 0;
+  box-shadow: var(--auto-ombre-lg);
+}
+.flux-alerte ul {
+  margin: var(--auto-espace-1) 0 0;
+  padding-left: var(--auto-espace-5);
+  font-size: var(--auto-taille-sm);
+}
+.flux-alerte > div {
+  flex: 1;
+}
+
+.flux-corps {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Palette */
+.flux-palette {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 296px;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+.flux-palette-recherche {
+  position: relative;
+  padding: var(--auto-espace-3);
+}
+.flux-palette-recherche .icone {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--auto-espace-3) + 12px);
+  translate: 0 -50%;
+  color: var(--auto-texte-attenue);
+  pointer-events: none;
+}
+.flux-palette-recherche .controle {
+  width: 100%;
+  padding-left: 36px;
+  border-radius: var(--auto-rayon-pleine);
+}
+.flux-palette-liste {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--auto-espace-2) var(--auto-espace-4);
+}
+.flux-palette-liste ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flux-palette-titre {
+  margin: var(--auto-espace-3) var(--auto-espace-2) var(--auto-espace-1);
+  color: var(--auto-texte-attenue);
+  font: 600 var(--auto-taille-xs) var(--auto-police-corps);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.flux-palette-vide {
+  padding: var(--auto-espace-3);
+}
+.flux-palette-element {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-2);
+  border: 0;
+  border-radius: var(--auto-rayon-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+.flux-palette-element:hover:not(:disabled) {
+  background: var(--md-sys-color-surface-container-high);
+}
+.flux-palette-element:active:not(:disabled) {
+  cursor: grabbing;
+}
+.flux-palette-element:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.flux-palette-element:focus-visible {
+  outline-offset: -2px;
+}
+.flux-palette-textes {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.flux-palette-libelle {
+  font-size: var(--auto-taille-sm);
+  font-weight: 600;
+}
+.flux-palette-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--auto-texte-attenue);
+  font-size: var(--auto-taille-xs);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Canevas : variables React Flow sur les rôles M3 (clair et sombre). */
+.flux-canevas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.flux-canevas .react-flow {
+  --xy-background-color: var(--md-sys-color-surface-container-lowest);
+  --xy-background-pattern-dots-color: var(--md-sys-color-outline-variant);
+  --xy-edge-stroke: var(--md-sys-color-outline);
+  --xy-edge-stroke-selected: var(--md-sys-color-primary);
+  --xy-edge-stroke-width: 2;
+  --xy-connectionline-stroke: var(--md-sys-color-primary);
+  --xy-connectionline-stroke-width: 2;
+  --xy-edge-label-background-color: var(--md-sys-color-surface-container-high);
+  --xy-edge-label-color: var(--md-sys-color-on-surface);
+  --xy-handle-background-color: var(--md-sys-color-surface);
+  --xy-handle-border-color: var(--md-sys-color-outline);
+  --xy-minimap-background-color: var(--md-sys-color-surface-container);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--md-sys-color-scrim) 12%, transparent);
+  --xy-minimap-mask-stroke-color: var(--md-sys-color-primary);
+  --xy-controls-button-background-color: var(--md-sys-color-surface-container);
+  --xy-controls-button-background-color-hover: var(--md-sys-color-surface-container-highest);
+  --xy-controls-button-color: var(--md-sys-color-on-surface);
+  --xy-controls-button-color-hover: var(--md-sys-color-on-surface);
+  --xy-controls-button-border-color: var(--md-sys-color-outline-variant);
+  --xy-controls-box-shadow: var(--auto-ombre-md);
+  --xy-selection-background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+  --xy-selection-border: 1px dashed var(--md-sys-color-primary);
+  --xy-node-boxshadow-selected: none;
+}
+.flux-canevas .react-flow__controls {
+  border-radius: var(--auto-rayon-md);
+  overflow: hidden;
+}
+.flux-canevas .react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+}
+.flux-canevas .react-flow__minimap {
+  border-radius: var(--auto-rayon-md);
+  overflow: hidden;
+  box-shadow: var(--auto-ombre-md);
+}
+.flux-mini {
+  fill: var(--flux-mini, var(--md-sys-color-primary-container));
+  stroke: none;
+}
+.flux-mini-primaire {
+  fill: var(--md-sys-color-primary);
+}
+.flux-mini-secondaire {
+  fill: var(--md-sys-color-secondary);
+}
+.flux-mini-tertiaire {
+  fill: var(--md-sys-color-tertiary);
+}
+.flux-canevas .react-flow__node:focus-visible {
+  outline: none;
+}
+.flux-canevas .react-flow__node:focus-visible .flux-noeud {
+  outline: 3px solid var(--auto-focus);
+  outline-offset: 3px;
+}
+.flux-canevas .react-flow__edge.selected .react-flow__edge-path,
+.flux-canevas .react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke-width: 3;
+}
+.flux-arete-active .react-flow__edge-path {
+  stroke: var(--auto-succes);
+  stroke-width: 2.5;
+}
+.flux-canevas .react-flow__edge-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+.flux-astuce {
+  position: absolute;
+  top: var(--auto-espace-4);
+  left: 50%;
+  max-width: min(520px, calc(100% - 32px));
+  margin: 0;
+  padding: var(--auto-espace-2) var(--auto-espace-4);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  font-size: var(--auto-taille-sm);
+  text-align: center;
+  translate: -50% 0;
+  pointer-events: none;
+}
+.flux-ajout-mobile {
+  display: none;
+}
+
+/* Nœud */
+.flux-noeud {
+  position: relative;
+  width: 232px;
+  padding: var(--auto-espace-3);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 16px;
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--auto-ombre-sm);
+  font-family: var(--auto-police-corps);
+  transition:
+    box-shadow var(--auto-mouvement-rapide) var(--auto-mouvement-courbe),
+    border-color var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.flux-noeud::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 16px 0 0 16px;
+  background: var(--flux-accent);
+}
+.flux-noeud[data-declencheur] {
+  border-radius: 32px 16px 16px 32px;
+}
+.flux-noeud[data-declencheur]::before {
+  display: none;
+}
+.flux-noeud:hover {
+  box-shadow: var(--auto-ombre-md);
+}
+.flux-noeud[data-selectionne] {
+  border-color: var(--md-sys-color-primary);
+  box-shadow:
+    0 0 0 2px var(--md-sys-color-primary),
+    var(--auto-ombre-md);
+}
+.flux-noeud[data-statut="succes"] {
+  border-color: var(--auto-succes);
+}
+.flux-noeud[data-statut="erreur"] {
+  border-color: var(--md-sys-color-error);
+  background: color-mix(in srgb, var(--md-sys-color-error-container) 35%, var(--md-sys-color-surface-container-low));
+}
+.flux-noeud[data-desactive] {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.flux-noeud[data-inconnu] {
+  border-color: var(--md-sys-color-error);
+  border-style: dashed;
+}
+.flux-noeud-corps {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+}
+.flux-noeud-textes {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.flux-noeud-nom {
+  overflow: hidden;
+  font-size: var(--auto-taille-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flux-noeud-type {
+  overflow: hidden;
+  color: var(--auto-texte-attenue);
+  font-size: var(--auto-taille-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flux-noeud-resultat {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 4px;
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--auto-succes-container);
+  color: var(--auto-succes-on-container);
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: var(--auto-ombre-sm);
+}
+.flux-noeud-resultat .symbole-m3 {
+  font-size: 14px;
+}
+.flux-noeud[data-statut="erreur"] .flux-noeud-resultat {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+}
+.flux-noeud-erreur,
+.flux-noeud-note {
+  display: -webkit-box;
+  margin: var(--auto-espace-2) 0 0;
+  overflow: hidden;
+  font-size: var(--auto-taille-xs);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.flux-noeud-erreur {
+  color: var(--md-sys-color-error);
+}
+.flux-noeud-note {
+  padding: var(--auto-espace-1) var(--auto-espace-2);
+  border-radius: var(--auto-rayon-sm);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.flux-sorties {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 0;
+}
+.flux-sorties[data-nommees] {
+  position: static;
+  width: auto;
+  margin: var(--auto-espace-2) calc(-1 * var(--auto-espace-3)) 0 0;
+  gap: 2px;
+}
+.flux-sortie {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  min-height: 22px;
+}
+.flux-sorties:not([data-nommees]) .flux-sortie {
+  position: static;
+}
+.flux-sortie-libelle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: var(--auto-espace-3);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+  font-weight: 500;
+}
+.flux-sortie-nb {
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-surface-container-highest);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.flux-poignee.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
+  transition:
+    background var(--auto-mouvement-rapide) var(--auto-mouvement-courbe),
+    scale var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.flux-poignee.react-flow__handle:hover,
+.flux-poignee.react-flow__handle.connectingfrom,
+.flux-poignee.react-flow__handle.valid {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  scale: 1.25;
+}
+.flux-poignee.react-flow__handle-left {
+  left: 0;
+}
+.flux-poignee.react-flow__handle-right {
+  right: 0;
+}
+
+/* Panneau du nœud */
+.flux-panneau {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 400px;
+  border-left: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+.flux-panneau-entete {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  padding: var(--auto-espace-3);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.flux-panneau-titres {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.flux-panneau-type {
+  padding-left: var(--auto-espace-2);
+  font-size: var(--auto-taille-xs);
+}
+.flux-onglets {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.flux-panneau .flux-onglets-liste {
+  padding: 0 var(--auto-espace-2);
+}
+.flux-panneau .flux-onglet-panneau {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--auto-espace-4);
+}
+.flux-description {
+  font-size: var(--auto-taille-sm);
+}
+.flux-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-4);
+}
+.flux-champ .controle {
+  width: 100%;
+}
+.controle-expr {
+  border-color: var(--md-sys-color-tertiary);
+  background: color-mix(in srgb, var(--md-sys-color-tertiary-container) 30%, var(--auto-surface));
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+}
+.controle-code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 13px;
+}
+.flux-apercu-expr {
+  overflow-wrap: anywhere;
+  padding: 2px var(--auto-espace-2);
+  border-left: 3px solid var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-on-surface-variant);
+  font:
+    12px/1.4 ui-monospace,
+    "Cascadia Code",
+    Consolas,
+    monospace;
+}
+.flux-apercu-expr[data-erreur] {
+  border-left-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-error);
+}
+.flux-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.flux-groupe legend {
+  padding: 0;
+  margin-bottom: var(--auto-espace-2);
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.flux-lignes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-2);
+}
+.flux-lignes > .bouton {
+  align-self: flex-start;
+}
+.flux-ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--auto-espace-1);
+}
+.flux-ligne > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.flux-paire {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: var(--auto-espace-1);
+}
+.flux-condition {
+  display: grid;
+  gap: var(--auto-espace-1);
+  padding: var(--auto-espace-2);
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-surface-container);
+}
+.flux-paire .controle,
+.flux-condition .controle,
+.flux-ligne > .controle {
+  width: 100%;
+  min-width: 0;
+}
+.flux-encart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-1);
+  margin-bottom: var(--auto-espace-4);
+  padding: var(--auto-espace-3);
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.flux-encart .aide {
+  color: inherit;
+}
+.flux-encart-titre {
+  font-size: var(--auto-taille-sm);
+  font-weight: 600;
+}
+.flux-url {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.flux-aide {
+  margin-top: var(--auto-espace-5);
+  padding: var(--auto-espace-3);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--auto-rayon-md);
+}
+.flux-aide summary {
+  min-height: 32px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.flux-aide h4 {
+  margin: var(--auto-espace-3) 0 var(--auto-espace-1);
+  font-size: var(--auto-taille-xs);
+  color: var(--auto-texte-attenue);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.flux-aide code {
+  font-size: 12px;
+}
+.flux-puces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-1);
+}
+.flux-puce {
+  min-height: 28px;
+  padding: 0 var(--auto-espace-2);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--auto-rayon-sm);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font:
+    12px ui-monospace,
+    "Cascadia Code",
+    Consolas,
+    monospace;
+  cursor: pointer;
+}
+.flux-puce:hover {
+  border-color: var(--md-sys-color-tertiary);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.flux-vide-panneau {
+  display: grid;
+  justify-items: center;
+  gap: var(--auto-espace-2);
+  padding: var(--auto-espace-8) var(--auto-espace-4);
+  color: var(--auto-texte-attenue);
+  text-align: center;
+}
+.flux-vide-panneau .symbole-m3 {
+  font-size: 40px;
+}
+.flux-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--auto-espace-2);
+  margin: 0;
+}
+.flux-stats div {
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-surface-container);
+}
+.flux-stats dt {
+  color: var(--auto-texte-attenue);
+  font-size: var(--auto-taille-xs);
+}
+.flux-stats dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.flux-sous-titre {
+  margin: 0;
+  font-size: var(--auto-taille-sm);
+}
+
+/* Écrans étroits : palette en tiroir, panneau en feuille du bas. */
+@media (max-width: 899px) {
+  .flux-palette {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 6;
+    width: min(320px, 88vw);
+    box-shadow: var(--auto-ombre-lg);
+    translate: -105% 0;
+    transition: translate var(--auto-mouvement-normal) var(--auto-mouvement-courbe);
+  }
+  .flux-plein[data-palette] .flux-palette {
+    translate: 0 0;
+  }
+  .flux-ajout-mobile {
+    position: absolute;
+    top: var(--auto-espace-3);
+    left: var(--auto-espace-3);
+    z-index: 7;
+    display: inline-flex;
+    box-shadow: var(--auto-ombre-md);
+  }
+  .flux-plein[data-palette] .flux-ajout-mobile {
+    left: calc(min(320px, 88vw) + var(--auto-espace-3));
+  }
+  .flux-panneau {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 8;
+    width: auto;
+    max-height: 62dvh;
+    border-left: 0;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 24px 24px 0 0;
+    box-shadow: var(--auto-ombre-lg);
+  }
+  .flux-astuce {
+    top: auto;
+    bottom: var(--auto-espace-16);
+  }
+  .flux-canevas .react-flow__minimap {
+    display: none;
+  }
+  .flux-barre .bouton:not(.bouton-icone) {
+    min-height: 40px;
+    padding: 0 var(--auto-espace-3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flux-palette,
+  .flux-onglet-indicateur,
+  .interrupteur-curseur {
+    transition: none;
+  }
+}
+
+/* Import n8n : zone de dépôt du fichier JSON. */
+.flux-depot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-2);
+  padding: var(--auto-espace-3);
+  border: 2px dashed var(--md-sys-color-outline-variant);
+  border-radius: var(--auto-rayon-md);
+}
+.flux-depot[data-survol] {
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 40%, transparent);
+}
+.flux-depot label:first-child {
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.flux-lien-fichier {
+  color: var(--auto-primaire);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.flux-lien-fichier:focus-within {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+.flux-paire > .flux-apercu-expr {
+  grid-column: 1 / -1;
+}
+
+/* Nœud importé de n8n à remplacer : contour et note d'avertissement. */
+.flux-noeud[data-avertissement] {
+  border: 2px dashed var(--auto-avertissement);
+}
+.flux-noeud[data-avertissement] .flux-noeud-note {
+  background: var(--auto-avertissement-container);
+  color: var(--auto-avertissement-on-container);
+}
+.flux-noeud-note .symbole-m3 {
+  margin-right: 4px;
+  font-size: 14px;
+  vertical-align: -2px;
+}
+
+/* Versions précédentes d'un workflow, dans leur modale. */
+.flux-versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  max-block-size: 50dvh;
+  overflow-y: auto;
+}
+.flux-versions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--auto-espace-3);
+  padding-block: var(--auto-espace-2);
+  border-block-end: 1px solid var(--auto-bordure);
+}
+.flux-versions li > span {
+  display: grid;
+  gap: var(--auto-espace-1);
+}

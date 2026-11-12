@@ -1,0 +1,14 @@
+{
+  "name": "@auto/ingest",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./llm": "./src/llm.ts"
+  },
+  "dependencies": {
+    "@auto/domain": "workspace:*",
+    "@auto/native": "workspace:*"
+  }
+}

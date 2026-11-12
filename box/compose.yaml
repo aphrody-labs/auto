@@ -1,0 +1,262 @@
+# Aphrody Box : Auto, n8n, Hermes Agent, Obsidian et Ollama prêts à l'emploi sur une seule machine, avec une
+# console d'administration. Installation : ./installer.sh (Linux, macOS) ou installer.ps1 (Windows).
+# Tous les secrets viennent de .env, écrit par `aphrody-box preparer` ; vos fichiers vivent dans ./coffre et
+# ./donnees, les bases dans des volumes Docker.
+name: aphrody-box
+
+x-redemarrage: &redemarrage
+  restart: unless-stopped
+
+x-auto: &auto
+  <<: *redemarrage
+  image: ${BOX_IMAGE_AUTO:-ghcr.io/aphrody-labs/auto:latest}
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &env-auto
+    NODE_ENV: production
+    DATABASE_URL: postgres://auto:${BOX_PG_MOT_DE_PASSE}@postgres:5432/auto
+    AUTO_CLE_MAITRE: ${AUTO_CLE_MAITRE}
+    AUTO_URL_APP: ${BOX_URL_AUTO}
+    AUTO_EMAIL_OPERATEUR: ${BOX_EMAIL}
+    AUTO_SMTP_HOTE: ${AUTO_SMTP_HOTE:-mailpit}
+    AUTO_SMTP_PORT: ${AUTO_SMTP_PORT:-1025}
+    AUTO_SMTP_SECURITE: ${AUTO_SMTP_SECURITE:-aucune}
+    AUTO_SMTP_UTILISATEUR: ${AUTO_SMTP_UTILISATEUR:-}
+    AUTO_SMTP_MOT_DE_PASSE: ${AUTO_SMTP_MOT_DE_PASSE:-}
+    AUTO_API_URL: http://auto-api:3000
+    # Nœuds IA d'Auto branchés sur l'Ollama de la boîte (seul hôte interne joignable par les workflows).
+    AUTO_IA_URL: http://ollama:11434/v1
+    AUTO_LLM_URL: ${AUTO_LLM_URL:-http://ollama:11434/v1}
+    AUTO_LLM_MODEL: ${AUTO_LLM_MODEL:-${BOX_MODELE:-qwen3:4b}}
+    AUTO_HOTES_PERMIS: ollama
+    # « permis » : les workflows atteignent le réseau local (Home Assistant, Nextcloud…). Seulement si vous
+    # contrôlez tous les comptes de la boîte.
+    AUTO_RESEAU_LOCAL: ${BOX_RESEAU_LOCAL:-}
+
+services:
+  # Console d'administration (Rust, Leptos) : seule à voir le moteur Docker, pour l'état, les journaux et les
+  # redémarrages des conteneurs de ce projet.
+  console:
+    <<: *redemarrage
+    image: ${BOX_IMAGE_CONSOLE:-ghcr.io/aphrody-labs/aphrody-box:latest}
+    build: ./console
+    user: "0"
+    env_file: .env
+    environment:
+      BOX_PROJET: aphrody-box
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:8080:8080"
+
+  postgres:
+    <<: *redemarrage
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: auto
+      POSTGRES_PASSWORD: ${BOX_PG_MOT_DE_PASSE}
+      POSTGRES_DB: auto
+    volumes:
+      - postgres:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auto -d auto"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  auto-api:
+    <<: *auto
+    command: ["bun", "apps/api/src/index.ts"]
+
+  auto-worker:
+    <<: *auto
+    command: ["bun", "apps/worker/src/index.ts"]
+    # Le worker n'écoute aucun port : la sonde HTTP de l'image ne s'applique pas.
+    healthcheck:
+      disable: true
+    depends_on:
+      auto-api:
+        condition: service_healthy
+
+  auto-web:
+    <<: *auto
+    command: ["bun", "apps/web/src/index.ts"]
+    environment:
+      <<: *env-auto
+      PORT: "3001"
+    depends_on:
+      auto-api:
+        condition: service_healthy
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:8081:3001"
+
+  n8n:
+    <<: *redemarrage
+    image: n8nio/n8n:2.45.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: auto
+      DB_POSTGRESDB_PASSWORD: ${BOX_PG_MOT_DE_PASSE}
+      N8N_ENCRYPTION_KEY: ${N8N_CLE_CHIFFREMENT}
+      # Propriétaire créé d'office : aucun écran de première configuration.
+      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
+      N8N_INSTANCE_OWNER_EMAIL: ${BOX_EMAIL}
+      N8N_INSTANCE_OWNER_FIRST_NAME: Admin
+      N8N_INSTANCE_OWNER_LAST_NAME: Box
+      N8N_INSTANCE_OWNER_PASSWORD_HASH: ${N8N_MOT_DE_PASSE_HASH}
+      N8N_SECURE_COOKIE: ${BOX_COOKIES_SECURISES:-false}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_RESTRICT_FILE_ACCESS_TO: /coffre
+      WEBHOOK_URL: ${BOX_URL_N8N}
+      GENERIC_TIMEZONE: Europe/Paris
+      TZ: Europe/Paris
+    # n8n tourne en 1000 : le groupe de la boîte lui ouvre le coffre en écriture.
+    group_add:
+      - ${BOX_GID:-1000}
+    volumes:
+      - n8n:/home/node/.n8n
+      - ./coffre:/coffre
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:5678:5678"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  # Identifiants n8n créés d'office : Ollama de la boîte et Hermes (API compatible OpenAI). Réimportés à chaque
+  # démarrage, sous les mêmes identifiants : rien n'est dupliqué.
+  n8n-identifiants:
+    image: n8nio/n8n:2.45.2
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: auto
+      DB_POSTGRESDB_PASSWORD: ${BOX_PG_MOT_DE_PASSE}
+      N8N_ENCRYPTION_KEY: ${N8N_CLE_CHIFFREMENT}
+      HERMES_CLE_API: ${HERMES_CLE_API}
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        printf '[{"id":"boxOllama0000001","name":"Ollama de la boîte","type":"ollamaApi","data":{"baseUrl":"http://ollama:11434"}},{"id":"boxHermes0000001","name":"Hermes de la boîte","type":"openAiApi","data":{"apiKey":"%s","url":"http://hermes:8642/v1"}}]'
+        "$$HERMES_CLE_API" > /tmp/identifiants.json
+        && n8n import:credentials --input=/tmp/identifiants.json
+        && rm /tmp/identifiants.json
+    restart: "no"
+
+  ollama:
+    <<: *redemarrage
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: 10m
+      # Fenêtre minimale de Hermes Agent (64 000 jetons).
+      OLLAMA_CONTEXT_LENGTH: "65536"
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Modèles du premier démarrage (conversation et embeddings) ; les suivants s'installent depuis la console.
+  ollama-modeles:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", 'ollama pull "$$BOX_MODELE" && ollama pull "$$BOX_MODELE_EMBEDDINGS"']
+    env_file: .env
+    restart: "no"
+
+  hermes:
+    <<: *redemarrage
+    image: nousresearch/hermes-agent:latest
+    command: ["gateway", "run"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      PUID: ${BOX_UID:-1000}
+      PGID: ${BOX_GID:-1000}
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: admin
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_MOT_DE_PASSE}
+      HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${HERMES_SECRET}
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_KEY: ${HERMES_CLE_API}
+      TZ: Europe/Paris
+    volumes:
+      - ./donnees/hermes:/opt/data
+      - ./coffre:/opt/data/coffre
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:9119:9119"
+      - "${BOX_ECOUTE:-0.0.0.0}:8642:8642"
+
+  obsidian:
+    <<: *redemarrage
+    image: lscr.io/linuxserver/obsidian:latest
+    shm_size: 1gb
+    environment:
+      PUID: ${BOX_UID:-1000}
+      PGID: ${BOX_GID:-1000}
+      TZ: Europe/Paris
+      CUSTOM_USER: ${BOX_ADMIN_UTILISATEUR:-admin}
+      PASSWORD: ${OBSIDIAN_MOT_DE_PASSE}
+    volumes:
+      - ./donnees/obsidian:/config
+      - ./coffre:/config/Coffre
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:3001:3001"
+
+  # Courriels de la boîte (inscriptions, factures…) tant qu'aucun relais réel n'est configuré dans .env.
+  mailpit:
+    <<: *redemarrage
+    image: axllent/mailpit:latest
+    environment:
+      MP_UI_AUTH: ${BOX_ADMIN_UTILISATEUR:-admin}:${BOX_ADMIN_MOT_DE_PASSE}
+      MP_MAX_MESSAGES: "2000"
+      TZ: Europe/Paris
+    volumes:
+      - mailpit:/data
+    ports:
+      - "${BOX_ECOUTE:-0.0.0.0}:8025:8025"
+
+  # HTTPS sur un domaine (profil activé par le préparateur avec --domaine) : un sous-domaine par application,
+  # certificats Let's Encrypt automatiques. Les enregistrements DNS *.domaine doivent pointer vers la machine.
+  caddy:
+    <<: *redemarrage
+    image: caddy:2
+    profiles: ["https"]
+    environment:
+      BOX_DOMAINE: ${BOX_DOMAINE:-}
+      BOX_EMAIL: ${BOX_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  postgres:
+  n8n:
+  ollama:
+  mailpit:
+  caddy:

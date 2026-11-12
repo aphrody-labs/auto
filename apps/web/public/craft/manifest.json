@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "version": "11f9687984d2f5ae",
+  "editeurs": {
+    "grid": {
+      "source": {
+        "release": "2026-10-24T19-44-50-429Z",
+        "owner": "aphrody-labs/bun-distribution"
+      },
+      "fichiers": {
+        "aphrody-icon.png": {
+          "sha256": "2d01ae083158869502b32c6365dc7b66c0dd98224491e72c4cfd570251d66fde",
+          "taille": 6718
+        },
+        "gridcraft_web.js": {
+          "sha256": "2e4ce50f4117afcb66147fb15678861da94d0a67fdbee07cef673b43e1d0f171",
+          "taille": 172220
+        },
+        "gridcraft_web_bg.wasm": {
+          "sha256": "bea43b28eaa8a059865e28ebc3d7711d2ba75a52c2cf166902619045f6d7b195",
+          "taille": 13254299,
+          "gzip": "gridcraft_web_bg.wasm.gz"
+        },
+        "auto-start.js": {
+          "sha256": "9ee3190a68cbe7f5b4dcd4362a571600a340b400c39ff576f7620f4a9826c7ea",
+          "taille": 97
+        },
+        "index.html": {
+          "sha256": "ef3a420dbe20168cc1f16c3157c9cd1b4856c9312266baa33460fb01db43938c",
+          "taille": 691
+        },
+        "theme.css": {
+          "sha256": "8feb0fbf9fe1c00800800a373421c35c1e067c449c4de7ad831ae576fd56f648",
+          "taille": 9788
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoFlex-OFL.txt": {
+          "sha256": "b023c5d35f13b14327b1db316eb8660f9924edb1819906b97e2c7dfef1b683f0",
+          "taille": 4395
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoMono-OFL.txt": {
+          "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215",
+          "taille": 4395
+        },
+        "licenses/fonts/latin-manifest.txt": {
+          "sha256": "d31ade53a9d9973167c816f146c3b1b0481b14d6eb662565f3bc531a34066b9f",
+          "taille": 776
+        },
+        "licenses/fonts/manifest.txt": {
+          "sha256": "803dac6cb77e1d04b03495378545867df63a4da36a7baf193c5281f929bd7a46",
+          "taille": 2450
+        },
+        "licenses/fonts/shippori-mincho/OFL.txt": {
+          "sha256": "ab93f2bba3aa30a641c1e961246dcd5b46e740dbd7bdde1bfe1dc22f6468167a",
+          "taille": 4398
+        },
+        "licenses/fonts/noto-sans-thai/OFL.txt": {
+          "sha256": "96ac951c8caddd87d8a66fe0d02342127696131d3e935ce4a936dc68cf032e33",
+          "taille": 4379
+        },
+        "licenses/fonts/noto-sans-cjk-sc/OFL.txt": {
+          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+          "taille": 4301
+        },
+        "licenses/fonts/noto-sans-arabic/OFL.txt": {
+          "sha256": "df5143cdf3380169f2d03bf6d2cd243e85621fd097e608c3607cf7f9c9884ae6",
+          "taille": 4381
+        },
+        "licenses/fonts/biz-ud-pgothic/OFL.txt": {
+          "sha256": "2b5ec1d32c0bc3f76d8cab11ecb65f9d9d43801ce124a7ec2b2e3061e8f4e9ea",
+          "taille": 4407
+        },
+        "licenses/fonts/biz-ud-mincho/OFL.txt": {
+          "sha256": "46a516143bf1f921993acb39d9dcce89e94cb36dc3bac7652c91972b6e8847c6",
+          "taille": 4407
+        }
+      }
+    },
+    "word": {
+      "source": {
+        "commit": "b83b388f77",
+        "owner": "aphrody-labs/bun-distribution"
+      },
+      "fichiers": {
+        "aphrody-icon.png": {
+          "sha256": "2d01ae083158869502b32c6365dc7b66c0dd98224491e72c4cfd570251d66fde",
+          "taille": 6718
+        },
+        "auto-start.js": {
+          "sha256": "36ee3747c03ed367a6ffee0724c816edcabd5f8a5da3c0f49d4f3aedf589aebf",
+          "taille": 97
+        },
+        "index.html": {
+          "sha256": "d77f587008964f8afe8f178910b7498354b9f27a5c31be169628a11b726a3e8c",
+          "taille": 700
+        },
+        "theme.css": {
+          "sha256": "8feb0fbf9fe1c00800800a373421c35c1e067c449c4de7ad831ae576fd56f648",
+          "taille": 9788
+        },
+        "wordcraft_web.js": {
+          "sha256": "648a2d059e5b7e9ac36b45e26b6c196463165b7c3e4554de71f820585ec1d93c",
+          "taille": 176271
+        },
+        "wordcraft_web_bg.wasm": {
+          "sha256": "ca8a63efe42bdce27a42b8862b960a62c04b30168e38c0ae03072b17d0683559",
+          "taille": 29056734,
+          "gzip": "wordcraft_web_bg.wasm.gz"
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoFlex-OFL.txt": {
+          "sha256": "b023c5d35f13b14327b1db316eb8660f9924edb1819906b97e2c7dfef1b683f0",
+          "taille": 4395
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoMono-OFL.txt": {
+          "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215",
+          "taille": 4395
+        },
+        "licenses/fonts/latin-manifest.txt": {
+          "sha256": "d31ade53a9d9973167c816f146c3b1b0481b14d6eb662565f3bc531a34066b9f",
+          "taille": 776
+        },
+        "licenses/fonts/manifest.txt": {
+          "sha256": "803dac6cb77e1d04b03495378545867df63a4da36a7baf193c5281f929bd7a46",
+          "taille": 2450
+        },
+        "licenses/fonts/shippori-mincho/OFL.txt": {
+          "sha256": "ab93f2bba3aa30a641c1e961246dcd5b46e740dbd7bdde1bfe1dc22f6468167a",
+          "taille": 4398
+        },
+        "licenses/fonts/noto-sans-thai/OFL.txt": {
+          "sha256": "96ac951c8caddd87d8a66fe0d02342127696131d3e935ce4a936dc68cf032e33",
+          "taille": 4379
+        },
+        "licenses/fonts/noto-sans-cjk-sc/OFL.txt": {
+          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+          "taille": 4301
+        },
+        "licenses/fonts/noto-sans-arabic/OFL.txt": {
+          "sha256": "df5143cdf3380169f2d03bf6d2cd243e85621fd097e608c3607cf7f9c9884ae6",
+          "taille": 4381
+        },
+        "licenses/fonts/biz-ud-pgothic/OFL.txt": {
+          "sha256": "2b5ec1d32c0bc3f76d8cab11ecb65f9d9d43801ce124a7ec2b2e3061e8f4e9ea",
+          "taille": 4407
+        },
+        "licenses/fonts/biz-ud-mincho/OFL.txt": {
+          "sha256": "46a516143bf1f921993acb39d9dcce89e94cb36dc3bac7652c91972b6e8847c6",
+          "taille": 4407
+        }
+      }
+    },
+    "pdf": {
+      "source": {
+        "release": "2026-10-24T19-44-50-429Z",
+        "owner": "aphrody-labs/bun-distribution"
+      },
+      "fichiers": {
+        "aphrody-icon.png": {
+          "sha256": "2d01ae083158869502b32c6365dc7b66c0dd98224491e72c4cfd570251d66fde",
+          "taille": 6718
+        },
+        "auto-start.js": {
+          "sha256": "cde0dae7706778a84020a4c25d0be24cb50f0724f643371a1ba0e285d948105b",
+          "taille": 95
+        },
+        "index.html": {
+          "sha256": "5b957a09a8f0169a21f7c3459b0229afdec83aaf0a40b1cdc9f4d8873c19d4d2",
+          "taille": 459
+        },
+        "pdfcraft_web.js": {
+          "sha256": "d2bdc0357448d58f4426fc1d97b5ca0d8b40e0f2bc4dcaa5d555597abba597cc",
+          "taille": 173406
+        },
+        "pdfcraft_web_bg.wasm": {
+          "sha256": "287374c71836aea1e5552de60851466b6ed64195549a28aa43eb0f9fe8105355",
+          "taille": 32374154,
+          "gzip": "pdfcraft_web_bg.wasm.gz"
+        },
+        "theme.css": {
+          "sha256": "8feb0fbf9fe1c00800800a373421c35c1e067c449c4de7ad831ae576fd56f648",
+          "taille": 9788
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoFlex-OFL.txt": {
+          "sha256": "b023c5d35f13b14327b1db316eb8660f9924edb1819906b97e2c7dfef1b683f0",
+          "taille": 4395
+        },
+        "licenses/packages/m3-fonts/fonts/RobotoMono-OFL.txt": {
+          "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215",
+          "taille": 4395
+        },
+        "licenses/fonts/latin-manifest.txt": {
+          "sha256": "d31ade53a9d9973167c816f146c3b1b0481b14d6eb662565f3bc531a34066b9f",
+          "taille": 776
+        },
+        "licenses/fonts/manifest.txt": {
+          "sha256": "803dac6cb77e1d04b03495378545867df63a4da36a7baf193c5281f929bd7a46",
+          "taille": 2450
+        },
+        "licenses/fonts/shippori-mincho/OFL.txt": {
+          "sha256": "ab93f2bba3aa30a641c1e961246dcd5b46e740dbd7bdde1bfe1dc22f6468167a",
+          "taille": 4398
+        },
+        "licenses/fonts/noto-sans-thai/OFL.txt": {
+          "sha256": "96ac951c8caddd87d8a66fe0d02342127696131d3e935ce4a936dc68cf032e33",
+          "taille": 4379
+        },
+        "licenses/fonts/noto-sans-cjk-sc/OFL.txt": {
+          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+          "taille": 4301
+        },
+        "licenses/fonts/noto-sans-arabic/OFL.txt": {
+          "sha256": "df5143cdf3380169f2d03bf6d2cd243e85621fd097e608c3607cf7f9c9884ae6",
+          "taille": 4381
+        },
+        "licenses/fonts/biz-ud-pgothic/OFL.txt": {
+          "sha256": "2b5ec1d32c0bc3f76d8cab11ecb65f9d9d43801ce124a7ec2b2e3061e8f4e9ea",
+          "taille": 4407
+        },
+        "licenses/fonts/biz-ud-mincho/OFL.txt": {
+          "sha256": "46a516143bf1f921993acb39d9dcce89e94cb36dc3bac7652c91972b6e8847c6",
+          "taille": 4407
+        }
+      }
+    }
+  }
+}

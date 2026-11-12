@@ -1,0 +1,10 @@
+{
+  "name": "@auto/billing",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@auto/store": "workspace:*"
+  }
+}

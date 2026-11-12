@@ -1,0 +1,599 @@
+{
+  "name": "Factures fournisseurs - scan, Excel et suivi des paiements",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "//SERVEUR/Scans/A_traiter",
+        "events": ["add"],
+        "options": {
+          "awaitWriteFinish": true,
+          "usePolling": true,
+          "ignoreInitial": true,
+          "depth": 0,
+          "ignored": "**/Thumbs.db"
+        }
+      },
+      "id": "fcdbc86a-4841-4035-b6b2-cc64bd35e73c",
+      "name": "Nouveau scan (dossier réseau)",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "729bdf6b-5321-48eb-b54e-7cb0321046dd",
+              "name": "racine",
+              "value": "//SERVEUR/Scans",
+              "type": "string"
+            },
+            {
+              "id": "18e77d7a-ab07-4e5f-8c3c-8fb8750e6d8a",
+              "name": "systeme",
+              "value": "windows",
+              "type": "string"
+            },
+            {
+              "id": "6a14ceb6-b9d3-42e8-9a35-1ca030027209",
+              "name": "modele",
+              "value": "claude-sonnet-5-5",
+              "type": "string"
+            },
+            {
+              "id": "7d6fe452-25e0-4504-ad2e-b2492967c338",
+              "name": "emailAlerte",
+              "value": "compta@votre-entreprise.fr",
+              "type": "string"
+            },
+            {
+              "id": "859c6da8-ae45-4dec-a514-3d19eeef95d3",
+              "name": "cheminFichier",
+              "value": "={{ $json.path.replace(/\\\\/g, '/') }}",
+              "type": "string"
+            },
+            {
+              "id": "1f73916d-d958-47d9-b6cf-b742f223d03e",
+              "name": "nomFichier",
+              "value": "={{ $json.path.split(/[\\\\/]/).pop() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "9e16350c-27fe-4f27-912a-3e279d512a81",
+      "name": "Paramètres",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a94a9c23-29b8-49e6-867f-73f5453d6d9f",
+              "leftValue": "={{ $json.nomFichier.toLowerCase() }}",
+              "rightValue": "\\.(pdf|png|jpe?g)$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "00bd1015-c1ce-4646-bdbe-bc5cf3ba2062",
+      "name": "PDF ou image ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $json.cheminFichier }}",
+        "options": {}
+      },
+      "id": "e0e926d4-9554-479e-a128-99d1bdf4e0a6",
+      "name": "Lire le fichier",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [780, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prépare la requête pour l'API Claude : le PDF ou l'image est envoyé en base64.\nconst p = $('Paramètres').first().json;\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const bin = items[i].binary && items[i].binary.data;\n  if (!bin) throw new Error('Aucun fichier lu : vérifiez le nœud \"Lire le fichier\".');\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  const data = buf.toString('base64');\n  const mime = bin.mimeType || 'application/pdf';\n  const bloc = mime === 'application/pdf'\n    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }\n    : { type: 'image', source: { type: 'base64', media_type: mime, data } };\n\n  const outil = {\n    name: 'enregistrer_facture',\n    description: 'Enregistre les données lues sur une facture fournisseur.',\n    input_schema: {\n      type: 'object',\n      properties: {\n        type_document: { type: 'string', enum: ['facture', 'avoir', 'autre'], description: \"Nature du document. 'autre' si ce n'est ni une facture ni un avoir.\" },\n        fournisseur_nom: { type: 'string', description: \"Raison sociale de l'émetteur de la facture.\" },\n        fournisseur_siret: { type: 'string', description: 'SIRET de l\\'émetteur : 14 chiffres sans espaces. Omettre si absent.' },\n        numero_facture: { type: 'string', description: 'Numéro de la facture tel qu\\'écrit sur le document.' },\n        date_facture: { type: 'string', description: 'Date de la facture au format AAAA-MM-JJ.' },\n        date_echeance: { type: 'string', description: 'Date d\\'échéance au format AAAA-MM-JJ. Omettre si absente.' },\n        montant_ht: { type: 'number', description: 'Total hors taxe en euros (négatif pour un avoir).' },\n        montant_tva: { type: 'number', description: 'Total de la TVA en euros (négatif pour un avoir).' },\n        montant_ttc: { type: 'number', description: 'Total toutes taxes comprises en euros (négatif pour un avoir).' },\n        reference_chantier: { type: 'string', description: 'Référence de chantier, d\\'affaire ou de commande, ou nom du chantier / adresse de livraison, si présents. Omettre sinon.' },\n        compte_charge_suggere: { type: 'string', enum: ['601000', '606000', '611000', '613000', '615000', '616000', '622000', '625000', '626000', '628000'],\n          description: '601000 matériaux ; 606000 énergie, fournitures, petit outillage ; 611000 sous-traitance ; 613000 locations ; 615000 entretien, réparations ; 616000 assurances ; 622000 honoraires ; 625000 déplacements ; 626000 télécoms, postaux ; 628000 divers.' },\n        confiance: { type: 'string', enum: ['haute', 'moyenne', 'basse'], description: 'Basse si le scan est flou ou si un montant est incertain.' },\n        remarques: { type: 'string', description: 'Anomalie constatée (rature, total illisible, plusieurs taux de TVA...). Omettre sinon.' }\n      },\n      required: ['type_document', 'fournisseur_nom', 'numero_facture', 'date_facture', 'montant_ht', 'montant_tva', 'montant_ttc', 'confiance']\n    }\n  };\n\n  const requestBody = {\n    model: p.modele,\n    max_tokens: 1500,\n    system: \"Tu es assistant comptable dans une entreprise du bâtiment. Tu lis une facture fournisseur (PDF ou scan) et tu appelles l'outil enregistrer_facture. N'invente rien : si une information est absente ou illisible, omets le champ. Les montants sont des nombres décimaux avec un point, sans symbole. Les dates sont au format AAAA-MM-JJ.\",\n    tools: [outil],\n    tool_choice: { type: 'tool', name: 'enregistrer_facture' },\n    messages: [{ role: 'user', content: [bloc, { type: 'text', text: 'Extrais les données de ce document.' }] }]\n  };\n  out.push({ json: { requestBody }, pairedItem: { item: i } });\n}\nreturn out;"
+      },
+      "id": "d04593d8-ba72-4f99-b0a8-6685d9eebcfd",
+      "name": "Préparer la requête Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, -100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "a8fd5f17-b5aa-4566-abd5-4705d49c2df1",
+      "name": "Claude : extraire la facture",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, -100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REMPLACER",
+          "name": "Anthropic API (x-api-key)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lit la réponse de Claude, contrôle les données et prépare la ligne du Journal Excel.\nconst p = $('Paramètres').first().json;\nconst r = $input.first().json;\nconst racine = String(p.racine).replace(/[\\\\/]+$/, '');\nconst windows = String(p.systeme).toLowerCase() === 'windows';\nconst nomFichier = p.nomFichier;\n\nconst serial = (s) => {\n  const m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(s || '');\n  return m ? Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000) : '';\n};\nconst now = new Date();\nconst nowSerial = (now.getTime() - now.getTimezoneOffset() * 60000) / 86400000 + 25569;\nconst stamp = now.toISOString().replace(/\\D/g, '').slice(0, 14);\nconst num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : null);\nconst dirSafe = (s) => s.replace(/[<>:\"/\\\\|?*]+/g, '-');\n\nconst bloc = (Array.isArray(r.content) ? r.content : []).find((b) => b.type === 'tool_use');\nconst d = bloc && bloc.input ? bloc.input : null;\nconst problemes = [];\nlet lectureOk = !!d;\nif (!d) {\n  const err = r.error && (r.error.message || JSON.stringify(r.error));\n  problemes.push('Lecture impossible : ' + (err || 'réponse vide de Claude'));\n}\nconst x = d || {};\n\nconst ht = num(x.montant_ht), tva = num(x.montant_tva), ttc = num(x.montant_ttc);\nconst siret = String(x.fournisseur_siret || '').replace(/\\D/g, '');\nlet chantier = x.reference_chantier\n  ? String(x.reference_chantier).trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')\n  : '';\n\nif (d) {\n  if (!x.numero_facture) problemes.push('N° de facture non lu');\n  if (!serial(x.date_facture)) problemes.push('Date de facture non lue');\n  if (!x.fournisseur_nom) problemes.push('Fournisseur non lu');\n  if (ttc === null) problemes.push('Montant TTC non lu');\n  else if (ht !== null && tva !== null && Math.abs(ht + tva - ttc) > 0.02) problemes.push('HT + TVA différent du TTC');\n  if (x.type_document && x.type_document !== 'facture') problemes.push('Document de type : ' + x.type_document);\n  if (x.confiance === 'basse') problemes.push('Confiance de lecture basse');\n  if (siret && siret.length !== 14) problemes.push('SIRET invalide');\n}\n\nconst controle = problemes.length ? 'À VÉRIFIER' : 'OK';\nconst annee = (String(x.date_facture || '').slice(0, 4).match(/^\\d{4}$/) || [String(now.getFullYear())])[0];\nconst dest = lectureOk && controle === 'OK'\n  ? racine + '/Traitees/' + dirSafe(chantier || 'A_AFFECTER') + '/' + annee\n  : racine + '/Erreurs';\n\nconst commentaire = [\n  problemes.join(' ; '),\n  x.remarques || '',\n  chantier ? 'Réf. chantier lue : ' + x.reference_chantier : '',\n  x.compte_charge_suggere ? 'Compte suggéré par l\\'IA' : ''\n].filter(Boolean).join(' | ');\n\nconst row = {\n  'Date facture': serial(x.date_facture),\n  'Fournisseur (nom lu)': x.fournisseur_nom || '',\n  'SIRET': siret,\n  'N° facture': x.numero_facture ? String(x.numero_facture) : 'SANS-NUMERO-' + stamp,\n  'Code chantier': chantier,\n  'Compte charge': x.compte_charge_suggere || '',\n  'Montant HT': ht === null ? '' : ht,\n  'Montant TVA': tva === null ? '' : tva,\n  'Montant TTC': ttc === null ? '' : ttc,\n  'Échéance (si lue)': serial(x.date_echeance),\n  'Litige (O)': '',\n  'Lien PDF': dest + '/' + nomFichier,\n  'Source': 'n8n',\n  'Contrôle OCR': controle,\n  'Commentaire': commentaire,\n  'Date import': nowSerial\n};\n\n// Commande qui range le fichier scanné (dossier créé au besoin, aucun écrasement).\nconst sh = (s) => windows ? \"'\" + s.replace(/'/g, \"''\") + \"'\" : \"'\" + s.replace(/'/g, \"'\\\\''\") + \"'\";\nconst toWin = (s) => s.replace(/\\//g, '\\\\');\nconst src = windows ? toWin(p.path) : p.path;\nconst dir = windows ? toWin(dest) : dest;\nlet commande;\nif (windows) {\n  const ps = '$s=' + sh(src) + '; $dir=' + sh(dir) + '; New-Item -ItemType Directory -Force -Path $dir | Out-Null; '\n    + '$n=[IO.Path]::GetFileName($s); $d=Join-Path $dir $n; '\n    + \"if (Test-Path -LiteralPath $d) { $n=[IO.Path]::GetFileNameWithoutExtension($n)+'_'+(Get-Date -Format yyyyMMddHHmmss)+[IO.Path]::GetExtension($n); $d=Join-Path $dir $n }; \"\n    + 'Move-Item -LiteralPath $s -Destination $d -Force';\n  commande = 'powershell -NoProfile -NonInteractive -Command \"' + ps + '\"';\n} else {\n  commande = 'mkdir -p ' + sh(dir) + ' && mv --backup=numbered -- ' + sh(src) + ' ' + sh(dir + '/');\n}\n\nreturn [{ json: { ...row, lectureOk, controle, problemes, nomFichier, destDossier: dest, commandeRanger: commande } }];"
+      },
+      "id": "23dbe725-92b6-4819-8657-8f39c0f48edd",
+      "name": "Valider et normaliser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, -100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e5adaf7a-0af1-4012-ae08-30dd8e378fe5",
+              "leftValue": "={{ $json.lectureOk }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2b50fe6-ee72-4101-ac61-51e54c2c0ab6",
+      "name": "Lecture réussie ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1820, -100]
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "append",
+        "workbook": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Classeur_Factures_Fournisseurs.xlsx"
+        },
+        "worksheet": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Journal"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "tblJournal"
+        },
+        "dataMode": "autoMap",
+        "options": {}
+      },
+      "id": "2da1e349-a6fe-416c-b1c3-e46b278ffbd6",
+      "name": "Ajouter au Journal Excel",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [2080, -200],
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "REMPLACER",
+          "name": "Microsoft Excel OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "={{ $('Valider et normaliser').first().json.commandeRanger }}"
+      },
+      "id": "11bd60d2-bb7e-4006-a99e-35a17b472c33",
+      "name": "Ranger le fichier",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [2340, -100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "80d3b463-d887-4024-9df3-26be2dee782e",
+              "leftValue": "={{ $('Valider et normaliser').first().json.controle }}",
+              "rightValue": "OK",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d3220592-1a57-4b61-a469-8ed777566ae1",
+      "name": "À signaler ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2600, -100]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Paramètres').first().json.emailAlerte }}",
+        "toEmail": "={{ $('Paramètres').first().json.emailAlerte }}",
+        "subject": "=Facture à vérifier : {{ $('Valider et normaliser').first().json.nomFichier }}",
+        "emailFormat": "text",
+        "text": "=Une facture demande un contrôle humain.\n\nFichier : {{ $('Valider et normaliser').first().json.destDossier }}/{{ $('Valider et normaliser').first().json.nomFichier }}\nMotifs : {{ $('Valider et normaliser').first().json.problemes.join(' ; ') }}\n\nCorrigez la ligne dans le Journal Excel (colonne Contrôle OCR), puis passez-la à OK.",
+        "options": {}
+      },
+      "id": "d14f2e07-142c-4f00-8a1c-46302fe79528",
+      "name": "Alerte e-mail (facture à vérifier)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2860, -100],
+      "credentials": {
+        "smtp": {
+          "id": "REMPLACER",
+          "name": "SMTP"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "c0569c35-b30b-4367-812f-ff3121df5dc8",
+      "name": "Chaque matin à 8 h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 520]
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "readRows",
+        "workbook": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Classeur_Factures_Fournisseurs.xlsx"
+        },
+        "worksheet": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "Suivi"
+        },
+        "dataStartRow": 1,
+        "options": {}
+      },
+      "id": "e54d29c1-73ae-4b8b-807a-1d262e0109bb",
+      "name": "Lire la feuille Suivi",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [260, 520],
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "REMPLACER",
+          "name": "Microsoft Excel OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construit le récapitulatif quotidien : retards, échéances proches, points à vérifier.\nconst lignes = $input.all().map((i) => i.json).filter((r) => String(r['N° facture'] || '') !== '');\nconst today = new Date();\nconst todaySerial = Math.floor((today.getTime() - today.getTimezoneOffset() * 60000) / 86400000) + 25569;\nconst eur = (v) => Number(v || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });\nconst date = (s) => (typeof s === 'number' ? new Date(Math.round((s - 25569) * 86400000)).toLocaleDateString('fr-FR', { timeZone: 'UTC' }) : '?');\nconst fmt = (r) => `- ${r['Fournisseur']} | facture ${r['N° facture']} | échéance ${date(r['Échéance'])} | reste dû ${eur(r['Reste dû'])}`;\n\nconst retard = lignes.filter((r) => r['Statut'] === 'En retard');\nconst proches = lignes.filter((r) => ['À payer', 'Partiellement payée'].includes(r['Statut'])\n  && typeof r['Échéance'] === 'number' && r['Échéance'] - todaySerial >= 0 && r['Échéance'] - todaySerial <= 7);\nconst litiges = lignes.filter((r) => r['Statut'] === 'Litige');\nconst verifier = lignes.filter((r) => r['Contrôle OCR'] === 'À VÉRIFIER' || r['Contrôle montants'] === 'ÉCART'\n  || r['Code fournisseur'] === 'À CRÉER' || r['Doublon'] === 'DOUBLON (ignoré)');\n\nif (!retard.length && !proches.length && !litiges.length && !verifier.length) return [];\n\nconst bloc = (titre, liste, f) => (liste.length ? `${titre} (${liste.length})\\n${liste.map(f).join('\\n')}\\n\\n` : '');\nconst total = (liste) => liste.reduce((s, r) => s + Number(r['Reste dû'] || 0), 0);\nconst texte = `Récapitulatif du ${today.toLocaleDateString('fr-FR')}\\n\\n`\n  + bloc(`FACTURES EN RETARD - ${eur(total(retard))}`, retard, (r) => fmt(r) + ` | ${r['Jours de retard']} j de retard`)\n  + bloc(`À PAYER SOUS 7 JOURS - ${eur(total(proches))}`, proches, fmt)\n  + bloc('EN LITIGE', litiges, fmt)\n  + bloc('À VÉRIFIER DANS LE JOURNAL', verifier, (r) => `- ${r['Fournisseur']} | facture ${r['N° facture']} | ${[r['Contrôle OCR'] === 'À VÉRIFIER' ? 'lecture à vérifier' : '', r['Contrôle montants'] === 'ÉCART' ? 'écart de montants' : '', r['Code fournisseur'] === 'À CRÉER' ? 'fournisseur à créer' : '', r['Doublon'] === 'DOUBLON (ignoré)' ? 'doublon' : ''].filter(Boolean).join(', ')}`);\n\nreturn [{ json: { sujet: `Factures fournisseurs : ${retard.length} en retard, ${proches.length} à payer sous 7 jours`, texte, nbRetard: retard.length, nbProches: proches.length } }];"
+      },
+      "id": "66f37266-f19d-4104-b8a0-6dbba42c6142",
+      "name": "Préparer le récapitulatif",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 520]
+    },
+    {
+      "parameters": {
+        "fromEmail": "compta@votre-entreprise.fr",
+        "toEmail": "compta@votre-entreprise.fr",
+        "subject": "={{ $json.sujet }}",
+        "emailFormat": "text",
+        "text": "={{ $json.texte }}",
+        "options": {}
+      },
+      "id": "5b6fbad3-305d-45f4-b8d0-6bbee4275767",
+      "name": "Envoyer le récapitulatif",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [780, 520],
+      "credentials": {
+        "smtp": {
+          "id": "REMPLACER",
+          "name": "SMTP"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "width": 760,
+        "height": 400,
+        "color": 4,
+        "content": "## Avant d'activer ce workflow\n1. **Variable d'environnement** : `NODES_EXCLUDE=[]` (n8n 2.x désactive par défaut *Local File Trigger* et *Execute Command*), puis redémarrer n8n.\n2. **Credentials** : `Anthropic API` (en-tête `x-api-key`), `Microsoft Excel OAuth2`, `SMTP` (facultatif).\n3. **Classeur** : placer `Classeur_Factures_Fournisseurs.xlsx` dans OneDrive, puis choisir classeur, feuille `Journal` et table `tblJournal` dans le nœud *Ajouter au Journal Excel* (idem `Suivi` dans *Lire la feuille Suivi*).\n4. **Dossiers** : créer `A_traiter`, `Traitees`, `Erreurs` dans le partage. Le chemin du déclencheur et la valeur `racine` du nœud *Paramètres* doivent désigner le même partage.\n5. n8n doit pouvoir lire/écrire le partage (compte de service, ou volume monté si Docker, avec `systeme` = `linux`).\n6. Activer les nœuds e-mail (désactivés par défaut) une fois SMTP configuré."
+      },
+      "id": "b3b2b59a-24d5-4efe-a2b4-ebb01e39564c",
+      "name": "Note - Prérequis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-20, -560]
+    },
+    {
+      "parameters": {
+        "width": 1700,
+        "height": 380,
+        "color": 7,
+        "content": "## A. Scan déposé > lecture par Claude > Journal Excel > classement\nUn scan arrive dans `A_traiter` : Claude lit le PDF ou l'image, le code contrôle les données (HT + TVA = TTC, champs obligatoires), la ligne est ajoutée au tableau **Journal**, puis le fichier est rangé dans `Traitees/<chantier>/<année>` ou dans `Erreurs` si un doute subsiste. Une facture douteuse est quand même inscrite au Journal avec *Contrôle OCR* = À VÉRIFIER."
+      },
+      "id": "77a3e1be-a4f6-457a-b94d-e70735b519cc",
+      "name": "Note - Bloc A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [770, -330]
+    },
+    {
+      "parameters": {
+        "width": 900,
+        "height": 150,
+        "color": 6,
+        "content": "## B. Suivi des paiements : récapitulatif quotidien\nChaque matin, lecture de la feuille **Suivi** puis e-mail avec les factures en retard, à payer sous 7 jours, en litige ou à vérifier. Aucun e-mail s'il n'y a rien à signaler. Les paiements se saisissent dans la feuille **Paiements** du classeur."
+      },
+      "id": "d697ce97-bde7-4c7a-be86-9a8b95ed0acd",
+      "name": "Note - Bloc B",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-20, 340]
+    }
+  ],
+  "connections": {
+    "Nouveau scan (dossier réseau)": {
+      "main": [
+        [
+          {
+            "node": "Paramètres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paramètres": {
+      "main": [
+        [
+          {
+            "node": "PDF ou image ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF ou image ?": {
+      "main": [
+        [
+          {
+            "node": "Lire le fichier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire le fichier": {
+      "main": [
+        [
+          {
+            "node": "Préparer la requête Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer la requête Claude": {
+      "main": [
+        [
+          {
+            "node": "Claude : extraire la facture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude : extraire la facture": {
+      "main": [
+        [
+          {
+            "node": "Valider et normaliser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valider et normaliser": {
+      "main": [
+        [
+          {
+            "node": "Lecture réussie ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lecture réussie ?": {
+      "main": [
+        [
+          {
+            "node": "Ajouter au Journal Excel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ranger le fichier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajouter au Journal Excel": {
+      "main": [
+        [
+          {
+            "node": "Ranger le fichier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ranger le fichier": {
+      "main": [
+        [
+          {
+            "node": "À signaler ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "À signaler ?": {
+      "main": [
+        [
+          {
+            "node": "Alerte e-mail (facture à vérifier)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chaque matin à 8 h": {
+      "main": [
+        [
+          {
+            "node": "Lire la feuille Suivi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire la feuille Suivi": {
+      "main": [
+        [
+          {
+            "node": "Préparer le récapitulatif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer le récapitulatif": {
+      "main": [
+        [
+          {
+            "node": "Envoyer le récapitulatif",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

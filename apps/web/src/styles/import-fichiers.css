@@ -1,0 +1,55 @@
+.import-lot h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.import-depot {
+  border: 2px dashed var(--auto-bordure);
+  border-radius: 12px;
+  padding: clamp(1rem, 3vw, 2rem);
+  background: var(--auto-surface);
+}
+.import-depot[data-survol="true"] {
+  border-color: var(--auto-primaire);
+  background: color-mix(in srgb, var(--auto-primaire) 8%, var(--auto-surface));
+}
+.import-progression {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--auto-primaire);
+}
+.import-resultats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+.import-resultats li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--auto-bordure);
+}
+.import-resultats .icone {
+  flex: none;
+}
+.import-resultats div {
+  min-width: 0;
+}
+.import-resultats strong,
+.import-resultats small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.import-resultats small {
+  color: var(--auto-texte-attenue);
+}
+@supports not (accent-color: auto) {
+  .import-progression::-webkit-progress-value {
+    background: var(--auto-primaire);
+  }
+  .import-progression::-moz-progress-bar {
+    background: var(--auto-primaire);
+  }
+}

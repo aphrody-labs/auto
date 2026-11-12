@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+exclude = ["vendor"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+# Suite Aphrody : clone partiel épinglé (vendor/suite.toml, bun scripts/vendor-suite.ts).
+# Sans la fonctionnalité oxc (découpeur JS/TS) : seuls les découpeurs prose et Markdown servent.
+aphrody-rag-core = { path = "vendor/bun-distribution/crates/aphrody-rag-core", default-features = false }
+deckcraft-model = { path = "vendor/bun-distribution/crates/deckcraft-model" }
+deckcraft-pdf = { path = "vendor/bun-distribution/crates/deckcraft-pdf" }
+deckcraft-pptx = { path = "vendor/bun-distribution/crates/deckcraft-pptx" }
+gridcraft-core = { path = "vendor/bun-distribution/crates/gridcraft-core" }
+gridcraft-calc = { path = "vendor/bun-distribution/crates/gridcraft-calc" }
+gridcraft-model = { path = "vendor/bun-distribution/crates/gridcraft-model" }
+gridcraft-xlsx = { path = "vendor/bun-distribution/crates/gridcraft-xlsx" }
+pdfcraft-annot = { path = "vendor/bun-distribution/crates/pdfcraft-annot" }
+pdfcraft-cos = { path = "vendor/bun-distribution/crates/pdfcraft-cos" }
+pdfcraft-create = { path = "vendor/bun-distribution/crates/pdfcraft-create" }
+pdfcraft-fonts = { path = "vendor/bun-distribution/crates/pdfcraft-fonts" }
+pdfcraft-model = { path = "vendor/bun-distribution/crates/pdfcraft-model" }
+pdfcraft-organize = { path = "vendor/bun-distribution/crates/pdfcraft-organize" }
+pdfcraft-preflight = { path = "vendor/bun-distribution/crates/pdfcraft-preflight" }
+pdfcraft-redact = { path = "vendor/bun-distribution/crates/pdfcraft-redact" }
+pdfcraft-render = { path = "vendor/bun-distribution/crates/pdfcraft-render" }
+pdfcraft-sign = { path = "vendor/bun-distribution/crates/pdfcraft-sign" }
+wordcraft-doc = { path = "vendor/bun-distribution/crates/wordcraft-doc" }
+wordcraft-docx = { path = "vendor/bun-distribution/crates/wordcraft-docx" }
+wordcraft-pdf = { path = "vendor/bun-distribution/crates/wordcraft-pdf" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+# Copies corrigées de hayro et lopdf dont pdfcraft-render dépend, comme dans bun-distribution.
+[patch.crates-io]
+hayro = { path = "vendor/bun-distribution/apps/pdfcraft/vendor/hayro" }
+hayro-interpret = { path = "vendor/bun-distribution/apps/pdfcraft/vendor/hayro-interpret" }
+hayro-jbig2 = { path = "vendor/bun-distribution/apps/pdfcraft/vendor/hayro-jbig2" }
+hayro-syntax = { path = "vendor/bun-distribution/apps/pdfcraft/vendor/hayro-syntax" }
+lopdf = { path = "vendor/bun-distribution/apps/pdfcraft/vendor/lopdf" }
+
+[profile.release]
+strip = true
+lto = "fat"
+codegen-units = 1

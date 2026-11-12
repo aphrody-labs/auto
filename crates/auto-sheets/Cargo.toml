@@ -1,0 +1,16 @@
+[package]
+name = "auto-sheets"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Tableurs : lecture xlsx/xls/xlsb/ods/csv et écriture xlsx typée (gridcraft)"
+
+[dependencies]
+gridcraft-core.workspace = true
+gridcraft-calc.workspace = true
+gridcraft-model.workspace = true
+gridcraft-xlsx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

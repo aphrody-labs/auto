@@ -1,0 +1,1 @@
+import init from "./pdfcraft_web.js"; await init({ module_or_path: "./pdfcraft_web_bg.wasm" });

@@ -1,0 +1,40 @@
+/* Même coque pour le navigateur, la PWA et les WebViews Tauri. */
+.barre-haut {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(var(--auto-espace-2), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--auto-espace-2), env(safe-area-inset-right, 0px));
+}
+.navigation {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: max(var(--auto-espace-4), env(safe-area-inset-bottom, 0px));
+}
+.nav-lien {
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+}
+.principal {
+  padding-bottom: max(var(--auto-espace-4), env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 1023px) {
+  .navigation[data-ouverte="true"] {
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    padding-left: max(var(--auto-espace-3), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--auto-espace-3), env(safe-area-inset-right, 0px));
+  }
+}
+@media (max-width: 479px) {
+  /* Empêche le zoom automatique iOS pendant la saisie. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+  .kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-entete h1 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

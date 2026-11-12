@@ -1,0 +1,24 @@
+{
+  "name": "@auto/api",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./app": "./src/app.ts"
+  },
+  "dependencies": {
+    "@auto/agent": "workspace:*",
+    "@auto/automate": "workspace:*",
+    "@auto/billing": "workspace:*",
+    "@auto/domain": "workspace:*",
+    "@auto/ingest": "workspace:*",
+    "@auto/mail": "workspace:*",
+    "@auto/native": "workspace:*",
+    "@auto/pa": "workspace:*",
+    "@auto/services": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@auto/tenancy": "workspace:*",
+    "@better-auth/mcp": "1.7.16",
+    "zod": "^4"
+  }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "auto-ffi"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Bibliothèque C ABI pour bun:ffi : rendu PDF, Factur-X, XML CII, extraction, contrôle PDF/A, tableurs, PDF et Word, base de connaissances"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+auto-docs = { path = "../auto-docs" }
+auto-connaissance = { path = "../auto-connaissance" }
+auto-facturx = { path = "../auto-facturx" }
+auto-fichiers = { path = "../auto-fichiers" }
+auto-modele = { path = "../auto-modele" }
+auto-sheets = { path = "../auto-sheets" }
+serde.workspace = true
+serde_json.workspace = true
+wordcraft-doc.workspace = true

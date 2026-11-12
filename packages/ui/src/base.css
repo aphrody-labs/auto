@@ -1,0 +1,673 @@
+/* Base commune du front (web, admin, landing) : jetons @auto/ui (rôles M3 et alias --auto-*), polices
+   libres auto-hébergées, composants. Aucune couleur brute : uniquement des variables. */
+@import "@aphrody/m3-tokens/m3-tokens.css";
+@import "./tokens.css";
+@import "./polices-repli.css";
+@import "pattern.css/dist/pattern.min.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Un élément masqué le reste, même si sa classe impose un display (grid, flex). */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--auto-fond);
+  color: var(--auto-texte);
+  font-family: var(--auto-police-corps);
+  font-size: var(--auto-taille-base);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--auto-police-titre);
+  line-height: 1.25;
+  margin: 0 0 var(--auto-espace-3);
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--auto-taille-xl);
+  font-weight: 700;
+}
+h2 {
+  font-size: var(--auto-taille-lg);
+  font-weight: 600;
+}
+h3 {
+  font-size: var(--auto-taille-base);
+  font-weight: 600;
+}
+p {
+  margin: 0 0 var(--auto-espace-3);
+}
+
+a {
+  color: var(--auto-primaire);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+
+/* Le focus n'est jamais masqué par l'en-tête collant. */
+/* Un élément masqué le reste, même si sa classe impose un display (grid, flex). */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  scroll-padding-top: 72px;
+}
+
+.chiffres,
+.montant,
+td.num,
+th.num {
+  font-variant-numeric: tabular-nums;
+}
+.num {
+  text-align: right;
+}
+
+.visuellement-cache {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.lien-evitement {
+  position: absolute;
+  left: var(--auto-espace-2);
+  top: -100px;
+  z-index: 100;
+  padding: var(--auto-espace-2) var(--auto-espace-4);
+  background: var(--auto-primaire);
+  color: var(--auto-sur-primaire);
+  border-radius: var(--auto-rayon-md);
+}
+.lien-evitement:focus {
+  top: var(--auto-espace-2);
+}
+
+.icone {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.icone-sm {
+  width: 16px;
+  height: 16px;
+}
+
+/* Boutons : calques d'état M3 (opacité du rôle on-* sur le conteneur), cibles 44 px. */
+.bouton {
+  --calque: var(--auto-texte);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--auto-espace-2);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--auto-espace-4);
+  border: 1px solid var(--auto-bordure-controle);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-surface);
+  color: var(--auto-texte);
+  font: 500 var(--auto-taille-sm) / 1 var(--auto-police-corps);
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
+  touch-action: manipulation;
+  transition: box-shadow var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.bouton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--calque);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity var(--auto-mouvement-rapide) var(--auto-mouvement-courbe);
+}
+.bouton:hover::before {
+  opacity: 0.08;
+}
+.bouton:active::before {
+  opacity: 0.12;
+}
+.bouton[aria-disabled="true"],
+.bouton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.bouton[aria-disabled="true"]::before,
+.bouton:disabled::before {
+  opacity: 0;
+}
+.bouton-primaire {
+  --calque: var(--auto-sur-primaire);
+  background: var(--auto-primaire);
+  border-color: var(--auto-primaire);
+  color: var(--auto-sur-primaire);
+}
+.bouton-danger {
+  --calque: var(--auto-sur-danger);
+  background: var(--auto-danger);
+  border-color: var(--auto-danger);
+  color: var(--auto-sur-danger);
+}
+.bouton-fantome {
+  border-color: transparent;
+  background: transparent;
+}
+.bouton-icone {
+  padding: 0;
+  width: 44px;
+}
+.bouton-plein {
+  width: 100%;
+}
+
+.indicateur {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: tourne 0.8s linear infinite;
+}
+@keyframes tourne {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .indicateur {
+    animation-duration: 2.4s;
+  }
+}
+
+/* Champs : libellé visible au-dessus, aide persistante, erreur sous le champ. */
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-1);
+  min-width: 0;
+}
+.champ > label,
+.champ > .libelle {
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+}
+.requis {
+  color: var(--auto-danger);
+}
+.aide {
+  font-size: var(--auto-taille-xs);
+  color: var(--auto-texte-attenue);
+}
+.erreur-champ {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-1);
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-danger);
+}
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+.controle {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  border: 1px solid var(--auto-bordure-controle);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-surface);
+  color: var(--auto-texte);
+  font-size: var(--auto-taille-base);
+}
+.controle:focus-visible {
+  outline-offset: 0;
+  border-color: var(--auto-focus);
+}
+.controle[aria-invalid="true"] {
+  border-color: var(--auto-danger);
+  border-width: 2px;
+}
+.controle[readonly] {
+  background: var(--auto-surface-alt);
+}
+textarea.controle {
+  min-height: 88px;
+  resize: vertical;
+}
+.controle.num {
+  font-variant-numeric: tabular-nums;
+}
+.case {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  min-height: 44px;
+  font-size: var(--auto-taille-sm);
+}
+.case input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--auto-primaire);
+}
+
+/* Cartes et surfaces : bordure fine préférée à l'ombre. */
+.carte {
+  background: var(--auto-surface);
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-lg);
+  padding: var(--auto-espace-4);
+}
+@media (min-width: 768px) {
+  .carte {
+    padding: var(--auto-espace-6);
+  }
+}
+
+/* Badge de statut : pictogramme + libellé, couleurs de conteneur M3 testées AA. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-1);
+  padding: 2px var(--auto-espace-2);
+  border-radius: var(--auto-rayon-pleine);
+  font-size: var(--auto-taille-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--texte);
+  background: var(--fond);
+}
+
+/* Bandeaux d'information, d'avertissement et d'erreur. */
+.bandeau {
+  display: flex;
+  gap: var(--auto-espace-3);
+  align-items: flex-start;
+  padding: var(--auto-espace-3) var(--auto-espace-4);
+  border-radius: var(--auto-rayon-md);
+  border: 1px solid var(--auto-bordure);
+  background: var(--auto-surface-alt);
+}
+.bandeau-erreur {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-color: transparent;
+}
+.bandeau-avertissement {
+  background: var(--auto-avertissement-container);
+  color: var(--auto-avertissement-on-container);
+  border-color: transparent;
+}
+.bandeau-succes {
+  background: var(--auto-succes-container);
+  color: var(--auto-succes-on-container);
+  border-color: transparent;
+}
+.bandeau ul {
+  margin: var(--auto-espace-1) 0 0;
+  padding-left: var(--auto-espace-5);
+}
+.bandeau:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Tableaux denses : lignes de 40 px, en-têtes surface-alt ; cartes empilées quand le conteneur fait moins de
+   600 px (requête de conteneur : un tableau dans une colonne étroite s'empile aussi sur grand écran). */
+.tableau-conteneur {
+  container-type: inline-size;
+  overflow-x: auto;
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-lg);
+  background: var(--auto-surface);
+}
+table.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--auto-taille-sm);
+}
+.tableau th,
+.tableau td {
+  padding: var(--auto-espace-2) var(--auto-espace-3);
+  height: 40px;
+  text-align: left;
+  border-bottom: 1px solid var(--auto-bordure);
+  vertical-align: middle;
+}
+.tableau th {
+  background: var(--auto-surface-alt);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tableau th.num,
+.tableau td.num {
+  text-align: right;
+}
+.tableau tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tableau tbody tr:hover {
+  background: color-mix(in srgb, var(--auto-texte) 4%, transparent);
+}
+.tableau a {
+  font-weight: 500;
+}
+@container (width < 600px) {
+  /* En-têtes retirés aussi des lecteurs d'écran : chaque cellule porte déjà son libellé (data-libelle). */
+  .tableau thead {
+    display: none;
+  }
+  .tableau tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--auto-espace-1) var(--auto-espace-3);
+    padding: var(--auto-espace-3);
+    border-bottom: 1px solid var(--auto-bordure);
+  }
+  .tableau td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .tableau td[data-libelle]::before {
+    content: attr(data-libelle) " : ";
+    color: var(--auto-texte-attenue);
+  }
+  .tableau td.num {
+    text-align: left;
+  }
+}
+
+/* États : vide, chargement (squelette), erreur. */
+.etat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-10) var(--auto-espace-4);
+  color: var(--auto-texte-attenue);
+}
+.etat .icone {
+  width: 32px;
+  height: 32px;
+}
+.etat h2 {
+  color: var(--auto-texte);
+  margin: 0;
+}
+.squelette {
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-surface-alt);
+  min-height: 16px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .squelette {
+    animation: none;
+  }
+}
+
+/* Modale native (<dialog>) : focus piégé par le navigateur, Échap, retour du focus. */
+dialog.modale {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--auto-rayon-lg);
+  background: var(--auto-surface);
+  color: var(--auto-texte);
+  box-shadow: var(--auto-ombre-lg);
+}
+dialog.modale::backdrop {
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent);
+}
+dialog.modale[open] {
+  animation: entree var(--auto-mouvement-normal) var(--auto-mouvement-courbe);
+}
+@keyframes entree {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.modale-entete,
+.modale-pied {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  padding: var(--auto-espace-4) var(--auto-espace-6);
+}
+.modale-entete {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--auto-bordure);
+}
+.modale-entete h2 {
+  margin: 0;
+}
+.modale-corps {
+  padding: var(--auto-espace-4) var(--auto-espace-6);
+  display: grid;
+  gap: var(--auto-espace-4);
+}
+.modale-pied {
+  justify-content: flex-end;
+  border-top: 1px solid var(--auto-bordure);
+}
+
+/* Toasts : aria-live, sans vol de focus. */
+.toasts {
+  position: fixed;
+  right: var(--auto-espace-4);
+  bottom: var(--auto-espace-4);
+  z-index: 100;
+  display: grid;
+  gap: var(--auto-espace-2);
+  max-width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--auto-espace-3);
+  padding: var(--auto-espace-3) var(--auto-espace-4);
+  border-radius: var(--auto-rayon-md);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--auto-ombre-md);
+  animation: entree var(--auto-mouvement-normal) var(--auto-mouvement-courbe);
+}
+
+/* Grilles de formulaire. */
+.grille {
+  display: grid;
+  gap: var(--auto-espace-4);
+}
+@media (min-width: 768px) {
+  .grille-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grille-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .grille-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .pleine-largeur {
+    grid-column: 1 / -1;
+  }
+}
+.rangee {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--auto-espace-2);
+}
+.espace {
+  flex: 1;
+}
+.attenue {
+  color: var(--auto-texte-attenue);
+}
+.pile {
+  display: grid;
+  gap: var(--auto-espace-6);
+}
+
+/* Onglets et filtres. */
+.onglets {
+  display: flex;
+  gap: var(--auto-espace-1);
+  border-bottom: 1px solid var(--auto-bordure);
+  overflow-x: auto;
+}
+.onglet {
+  min-height: 44px;
+  padding: 0 var(--auto-espace-4);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--auto-texte-attenue);
+  font: 500 var(--auto-taille-sm) var(--auto-police-corps);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.onglet[aria-selected="true"],
+.onglet[aria-current="page"] {
+  color: var(--auto-primaire);
+  border-bottom-color: var(--auto-primaire);
+}
+
+/* Stepper d'onboarding. */
+.etapes {
+  display: flex;
+  gap: var(--auto-espace-2);
+  list-style: none;
+  margin: 0 0 var(--auto-espace-6);
+  padding: 0;
+  counter-reset: etape;
+}
+.etapes li {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-1);
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+.etapes li::before {
+  content: "";
+  height: 4px;
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--auto-bordure);
+}
+.etapes li[data-etat="faite"]::before,
+.etapes li[data-etat="courante"]::before {
+  background: var(--auto-primaire);
+}
+.etapes li[data-etat="courante"] {
+  color: var(--auto-texte);
+  font-weight: 600;
+}
+
+/* Choix du thème (paramètres) : trois boutons radio, cibles de 44 px. */
+.choix-theme {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.choix-theme legend {
+  margin-bottom: var(--auto-espace-2);
+  font-weight: 600;
+}
+.choix-theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  min-height: 44px;
+  padding: 0 var(--auto-espace-3);
+  border: 1px solid var(--auto-bordure-controle);
+  border-radius: var(--auto-rayon-pleine);
+  cursor: pointer;
+}
+.choix-theme-option:has(input:checked) {
+  border-color: var(--auto-primaire);
+  background: color-mix(in srgb, var(--auto-primaire) 10%, transparent);
+}
+.choix-theme-option:has(input:focus-visible) {
+  outline: 2px solid var(--auto-focus);
+  outline-offset: 2px;
+}
+.choix-theme-option input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--auto-primaire);
+}
+
+/* Numéros de pièce et actions de ligne : jamais coupés dans un tableau large. */
+.tableau td.chiffres,
+.tableau .actions-ligne {
+  white-space: nowrap;
+}
+.tableau .actions-ligne {
+  flex-wrap: nowrap;
+}
+
+/* Fonds à motifs (pattern.css, MIT) : calque décoratif sous le contenu, couleur de bordure des jetons, estompé
+   par un masque pour ne jamais gêner la lecture. Usage : <div class="fond-motif pattern-grid-lg" aria-hidden="true">
+   dans un parent en position relative. */
+.fond-motif {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: var(--auto-bordure);
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 70% 60% at 70% 35%, black, transparent 75%);
+}
+
+/* Colonne de texte libre (nom, anomalies) : jamais écrasée par les colonnes numériques. */
+.tableau td.col-texte {
+  min-width: 22ch;
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@auto/cli",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "bin": {
+    "auto": "src/cli.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "bun build --compile src/cli.ts --outfile ../../dist/auto"
+  },
+  "dependencies": {
+    "@auto/agent": "workspace:*",
+    "@auto/ingest": "workspace:*"
+  },
+  "devDependencies": {
+    "@auto/api": "workspace:*",
+    "@auto/store": "workspace:*"
+  }
+}

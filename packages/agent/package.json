@@ -1,0 +1,17 @@
+{
+  "name": "@auto/agent",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-api": "./src/test-api.ts"
+  },
+  "dependencies": {
+    "@auto/ingest": "workspace:*"
+  },
+  "devDependencies": {
+    "@auto/api": "workspace:*",
+    "@auto/store": "workspace:*"
+  }
+}

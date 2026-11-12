@@ -1,0 +1,497 @@
+/* Pages publiques (accueil, tarifs, mentions légales) : mêmes jetons et composants que l'application. */
+@import "@auto/ui/base.css";
+
+.site-entete {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--auto-surface);
+  border-bottom: 1px solid var(--auto-bordure);
+}
+.site-entete nav,
+.site-pied .conteneur,
+.conteneur {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--auto-espace-4);
+}
+.site-entete nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  min-height: 64px;
+}
+.site-entete .liens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--auto-espace-1);
+  margin-left: auto;
+}
+.site-entete .liens a:not(.bouton) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--auto-espace-3);
+  color: var(--auto-texte);
+  text-decoration: none;
+  font-weight: 500;
+}
+.site-entete .liens a[aria-current="page"] {
+  color: var(--auto-primaire);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+
+.marque {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  font: 700 var(--auto-taille-lg) var(--auto-police-titre);
+  color: var(--auto-texte);
+  text-decoration: none;
+}
+.marque-logo {
+  display: grid;
+  place-items: center;
+  width: var(--auto-espace-8);
+  height: var(--auto-espace-8);
+  border-radius: var(--auto-rayon-md);
+  background: var(--auto-primaire);
+  color: var(--auto-sur-primaire);
+}
+
+a.bouton {
+  text-decoration: none;
+}
+
+.heros {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: var(--auto-espace-12);
+  align-items: center;
+  padding-block: var(--auto-espace-16) var(--auto-espace-12);
+}
+.heros h1 {
+  font-size: clamp(36px, 5.2vw, 60px);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  max-width: 14ch;
+  text-wrap: balance;
+}
+.heros p {
+  font-size: var(--auto-taille-lg);
+  color: var(--auto-texte-attenue);
+  max-width: 52ch;
+}
+.heros .rangee {
+  margin-top: var(--auto-espace-6);
+}
+
+/* Spécimen de facture : la feuille occupe la première colonne, les annotations la marge de droite, chacune sur la
+   rangée de la ligne qu'elle commente. Sous 1100 px, les annotations passent sous leur ligne. */
+.specimen {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.specimen > :not(.feuille, figcaption) {
+  position: relative;
+  padding-inline: var(--auto-espace-6);
+}
+/* Sous 1100 px, la figure elle-même est la feuille ; au-delà, .feuille couvre seulement la première colonne. */
+.specimen,
+.feuille {
+  background: var(--auto-surface);
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-sm);
+  box-shadow: var(--auto-ombre-lg);
+}
+.feuille {
+  display: none;
+}
+.specimen figcaption {
+  padding: 0 var(--auto-espace-6) var(--auto-espace-4);
+}
+.f-entete {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--auto-espace-4);
+  padding-top: var(--auto-espace-6);
+  padding-bottom: var(--auto-espace-4);
+  border-bottom: 2px solid var(--auto-primaire);
+}
+.f-entete div,
+.f-client {
+  display: grid;
+  gap: 2px;
+}
+.f-entete span,
+.f-client span {
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+.f-numero {
+  text-align: right;
+}
+.f-client {
+  padding-block: var(--auto-espace-4);
+}
+.f-lignes {
+  border-collapse: collapse;
+  font-size: var(--auto-taille-sm);
+  margin-inline: var(--auto-espace-6);
+  width: calc(100% - 2 * var(--auto-espace-6));
+  padding: 0;
+}
+.f-lignes th,
+.f-lignes td {
+  padding: var(--auto-espace-2) 0;
+  text-align: right;
+  border-bottom: 1px solid var(--auto-bordure);
+}
+.f-lignes thead th {
+  font-weight: 500;
+  color: var(--auto-texte-attenue);
+}
+.f-lignes :is(th, td):first-child {
+  text-align: left;
+}
+.f-lignes tfoot th {
+  font-weight: 400;
+  text-align: right;
+}
+.f-lignes tfoot tr:last-child > * {
+  border-bottom: 0;
+}
+.f-total > * {
+  font: 700 var(--auto-taille-lg) var(--auto-police-titre);
+}
+.f-pied {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--auto-espace-2);
+  padding-block: var(--auto-espace-4) var(--auto-espace-6);
+  font-size: var(--auto-taille-sm);
+  color: var(--auto-texte-attenue);
+}
+.f-statut {
+  padding: 2px var(--auto-espace-3);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--auto-statut-paye-fond);
+  color: var(--auto-statut-paye-texte);
+  font-weight: 600;
+}
+.specimen .note {
+  margin: 0 0 var(--auto-espace-3);
+  padding: var(--auto-espace-2) var(--auto-espace-6);
+  font-size: var(--auto-taille-sm);
+  line-height: 1.4;
+  color: var(--auto-primaire);
+  border-left: 2px solid var(--auto-primaire);
+  margin-inline: var(--auto-espace-6);
+}
+.specimen figcaption {
+  margin-top: var(--auto-espace-3);
+  font-size: var(--auto-taille-xs);
+  color: var(--auto-texte-attenue);
+}
+
+@media (min-width: 1100px) {
+  .heros {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+  .specimen {
+    background: none;
+    border: 0;
+    box-shadow: none;
+    grid-template-columns: minmax(0, 1fr) 190px;
+    column-gap: var(--auto-espace-6);
+  }
+  .specimen > :not(.feuille, .note, figcaption) {
+    grid-column: 1;
+  }
+  .f-entete {
+    grid-row: 1;
+  }
+  .f-client {
+    grid-row: 2;
+  }
+  .f-lignes {
+    grid-row: 3;
+  }
+  .f-pied {
+    grid-row: 4;
+  }
+  .specimen .note {
+    grid-column: 2;
+    align-self: center;
+    margin: 0;
+    padding: 0 0 0 var(--auto-espace-3);
+  }
+  /* Trait de rappel entre la ligne commentée et son annotation. */
+  .specimen .note::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    width: calc(var(--auto-espace-6) + var(--auto-espace-3));
+    border-top: 1px dashed var(--auto-primaire);
+  }
+  .specimen .note:nth-of-type(1) {
+    grid-row: 1;
+  }
+  .specimen .note:nth-of-type(2) {
+    grid-row: 2;
+  }
+  .specimen .note:nth-of-type(3) {
+    grid-row: 4;
+  }
+  .feuille {
+    display: block;
+    grid-row: 1 / span 4;
+    grid-column: 1;
+  }
+  .specimen figcaption {
+    grid-row: 5;
+    grid-column: 1;
+    padding: 0;
+  }
+}
+
+.section {
+  padding-block: var(--auto-espace-12);
+}
+.section h2 {
+  font-size: var(--auto-taille-xl);
+}
+
+/* Frise du devis au comptable : vraie séquence, d'où la numérotation. */
+.etapes {
+  counter-reset: etape;
+  list-style: none;
+  display: grid;
+  gap: var(--auto-espace-6);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: var(--auto-espace-8) 0 0;
+  padding: 0;
+}
+.etapes li {
+  counter-increment: etape;
+  position: relative;
+  padding-top: var(--auto-espace-10);
+  border-top: 2px solid var(--auto-bordure);
+}
+.etapes li::before {
+  content: counter(etape);
+  position: absolute;
+  top: calc(-1 * var(--auto-espace-4) - 1px);
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: var(--auto-espace-8);
+  height: var(--auto-espace-8);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--auto-primaire);
+  color: var(--auto-sur-primaire);
+  font: 700 var(--auto-taille-sm) var(--auto-police-titre);
+}
+.etapes h3 {
+  margin: 0 0 var(--auto-espace-2);
+  font-size: var(--auto-taille-lg);
+}
+.etapes p {
+  margin: 0;
+  color: var(--auto-texte-attenue);
+  max-width: 34ch;
+}
+.aussi {
+  margin-top: var(--auto-espace-10);
+  color: var(--auto-texte-attenue);
+}
+
+.plans {
+  display: grid;
+  gap: var(--auto-espace-4);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: var(--auto-espace-6);
+  align-items: stretch;
+}
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auto-espace-3);
+}
+.plan[data-recommande] {
+  border: 2px solid var(--auto-primaire);
+}
+.plan h3 {
+  margin: 0;
+  font-size: var(--auto-taille-lg);
+}
+.plan .prix {
+  font: 700 var(--auto-taille-xxl) / 1.1 var(--auto-police-titre);
+  font-variant-numeric: tabular-nums;
+}
+.plan .prix small {
+  font: 500 var(--auto-taille-sm) var(--auto-police-corps);
+  color: var(--auto-texte-attenue);
+}
+.plan ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--auto-espace-2);
+  flex: 1;
+}
+.plan li {
+  display: flex;
+  gap: var(--auto-espace-2);
+  align-items: flex-start;
+  font-variant-numeric: tabular-nums;
+}
+.plan li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--auto-succes);
+}
+.pastille {
+  align-self: flex-start;
+  padding: 2px var(--auto-espace-3);
+  border-radius: var(--auto-rayon-pleine);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: var(--auto-taille-xs);
+  font-weight: 600;
+}
+
+.texte-long {
+  max-width: 75ch;
+}
+
+.site-pied {
+  margin-top: var(--auto-espace-12);
+  padding: var(--auto-espace-8) 0;
+  border-top: 1px solid var(--auto-bordure);
+  background: var(--auto-surface);
+  font-size: var(--auto-taille-sm);
+}
+.site-pied .conteneur {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--auto-espace-4) var(--auto-espace-8);
+  align-items: center;
+}
+.site-pied a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Mobile : en-tête sur une seule ligne (logo et liens). Le bouton d'essai est retiré de l'en-tête : chaque
+   page publique propose déjà son appel à l'action principal au-dessus de la ligne de flottaison. */
+@media (max-width: 480px) {
+  .site-entete nav {
+    flex-wrap: nowrap;
+    min-height: 56px;
+  }
+  .site-entete .liens {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .site-entete .liens a:not(.bouton) {
+    padding: 0 var(--auto-espace-2);
+  }
+  .site-entete .liens .bouton {
+    display: none;
+  }
+}
+
+/* Montants et numéros jamais coupés ; feuille plus étroite sur mobile. */
+.f-numero strong,
+.f-lignes td {
+  white-space: nowrap;
+}
+.heros h1 {
+  margin-bottom: var(--auto-espace-4);
+}
+@media (max-width: 599px) {
+  .specimen > :not(.feuille, figcaption) {
+    padding-inline: var(--auto-espace-4);
+  }
+  .f-lignes {
+    margin-inline: var(--auto-espace-4);
+    width: calc(100% - 2 * var(--auto-espace-4));
+  }
+  .specimen .note {
+    margin-inline: var(--auto-espace-4);
+    padding-inline: var(--auto-espace-3) 0;
+  }
+  .specimen figcaption {
+    padding-inline: var(--auto-espace-4);
+  }
+  .f-entete {
+    flex-direction: column;
+  }
+  .f-numero {
+    text-align: left;
+  }
+  .etapes {
+    row-gap: var(--auto-espace-10);
+  }
+}
+
+/* Devis en ligne (/devis/<jeton>) : lecture et réponse du client. */
+.devis-public {
+  max-width: 820px;
+  padding-block: var(--auto-espace-12);
+}
+.devis-parties {
+  color: var(--auto-texte-attenue);
+}
+.devis-lignes tfoot th {
+  text-align: right;
+  font-weight: 400;
+}
+.devis-total > * {
+  font: 700 var(--auto-taille-lg) var(--auto-police-titre);
+}
+.devis-decision {
+  display: grid;
+  gap: var(--auto-espace-4);
+  margin-top: var(--auto-espace-8);
+  padding: var(--auto-espace-6);
+  border: 1px solid var(--auto-bordure);
+  border-radius: var(--auto-rayon-lg);
+  background: var(--auto-surface);
+}
+.devis-decision h2 {
+  margin: 0;
+}
+.devis-reponse {
+  margin-top: var(--auto-espace-8);
+  font-weight: 600;
+}
+
+/* Engagements : deux paires titre-texte, sans cartes. */
+.engagements {
+  display: grid;
+  gap: var(--auto-espace-6) var(--auto-espace-12);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin: var(--auto-espace-6) 0 0;
+}
+.engagements dt {
+  font: 600 var(--auto-taille-lg) / 1.3 var(--auto-police-titre);
+}
+.engagements dd {
+  margin: var(--auto-espace-2) 0 0;
+  color: var(--auto-texte-attenue);
+  max-width: 52ch;
+}

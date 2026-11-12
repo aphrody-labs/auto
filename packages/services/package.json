@@ -1,0 +1,22 @@
+{
+  "name": "@auto/services",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/evenements.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@auto/automate": "workspace:*",
+    "@auto/billing": "workspace:*",
+    "@auto/domain": "workspace:*",
+    "@auto/ingest": "workspace:*",
+    "@auto/mail": "workspace:*",
+    "@auto/native": "workspace:*",
+    "@auto/pa": "workspace:*",
+    "@auto/store": "workspace:*",
+    "@auto/tenancy": "workspace:*",
+    "quickjs-emscripten": "^0.32.0"
+  }
+}

@@ -1,0 +1,5 @@
+[submodule "vendor/n8n"]
+	path = vendor/n8n
+	url = https://github.com/aphrody-labs/n8n.git
+	shallow = true
+	branch = bun

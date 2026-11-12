@@ -1,0 +1,28 @@
+# HTTPS de l'Aphrody Box : un sous-domaine par application (profil « https » du compose).
+{
+	email {$BOX_EMAIL}
+}
+
+console.{$BOX_DOMAINE} {
+	reverse_proxy console:8080
+}
+
+auto.{$BOX_DOMAINE} {
+	reverse_proxy auto-web:3001
+}
+
+n8n.{$BOX_DOMAINE} {
+	reverse_proxy n8n:5678
+}
+
+agent.{$BOX_DOMAINE} {
+	reverse_proxy hermes:9119
+}
+
+notes.{$BOX_DOMAINE} {
+	reverse_proxy obsidian:3000
+}
+
+courrier.{$BOX_DOMAINE} {
+	reverse_proxy mailpit:8025
+}

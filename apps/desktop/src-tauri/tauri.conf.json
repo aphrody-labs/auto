@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "auto",
+  "version": "0.2.0",
+  "identifier": "com.aphrody.auto",
+  "build": {
+    "devUrl": "http://localhost:3001",
+    "frontendDist": "http://localhost:3001"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi", "dmg", "appimage", "deb"],
+    "category": "Business",
+    "shortDescription": "Facturation et gestion pour indépendants et TPE",
+    "copyright": "Aphrody",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": {
+      "allowDowngrades": false,
+      "nsis": { "installMode": "currentUser", "languages": ["French"] },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ4RUJGMzI0RjgwNTY0NjcKUldSblpBWDRKUFByU01LK1V0QXd2Q0dZQjRsMjNJUThXKzQyS1grY3Y2a0hnamEvWjd1UWVtei8K",
+      "endpoints": ["https://auto.aphrody.com/api/updates/{{target}}/{{arch}}/{{current_version}}"],
+      "requireSignedVersion": true
+    }
+  }
+}

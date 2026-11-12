@@ -1,0 +1,18 @@
+[package]
+name = "auto-facturx"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Factur-X (profil EN 16931) : XML CII, PDF/A-3b avec XML embarqué, extraction"
+
+[dependencies]
+auto-modele = { path = "../auto-modele" }
+pdfcraft-cos.workspace = true
+pdfcraft-preflight.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+pdfcraft-create.workspace = true
