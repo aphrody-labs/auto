@@ -8,8 +8,9 @@ COPY package.json bun.lock bunfig.toml tsconfig.json ./
 COPY apps apps
 COPY packages packages
 RUN bun install --frozen-lockfile --production
-RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-fra && rm -rf /var/lib/apt/lists/*
+# hadolint ignore=DL3018
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-fra
 # Dossier personnel inscriptible (profil de Chromium, caches) : /app reste en lecture seule pour `auto`.
 RUN mkdir -p /home/auto && chown auto /home/auto
 ENV HOME=/home/auto
-USER auto
+USER 10001

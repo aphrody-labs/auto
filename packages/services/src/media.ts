@@ -60,7 +60,7 @@ export const servicesMedia = (verifierUrl: (u: string) => URL): Pick<Services, "
   image: transformer,
   video: {
     async metadonnees(octets) {
-      if (!Bun.Video.available) throw new Error("décodeur vidéo indisponible");
+      if (!Bun.Video?.available) throw new Error("décodeur vidéo indisponible");
       const m = await new Bun.Video(octets).metadata();
       return {
         largeur: m.width,
@@ -73,13 +73,13 @@ export const servicesMedia = (verifierUrl: (u: string) => URL): Pick<Services, "
       };
     },
     async image(octets, secondes, largeur) {
-      if (!Bun.Video.available) throw new Error("décodeur vidéo indisponible");
+      if (!Bun.Video?.available) throw new Error("décodeur vidéo indisponible");
       let f = new Bun.Video(octets).frame(secondes);
       if (largeur) f = f.resize(largeur);
       return f.jpeg({ quality: 85 }).bytes();
     },
     async gif(octets, debut, duree, largeur) {
-      if (!Bun.Video.available) throw new Error("décodeur vidéo indisponible");
+      if (!Bun.Video?.available) throw new Error("décodeur vidéo indisponible");
       return new Uint8Array(
         await new Bun.Video(octets).gif({ start: debut, duration: duree, fps: 10, width: largeur }),
       );

@@ -5,7 +5,7 @@
 // La base d'origine (déduite du nom du fichier) fixe la clé de déchiffrement. La restauration vers une
 // base neuve, puis le basculement, évite d'écraser la production en cas d'échec.
 import { dechiffrer } from "../packages/tenancy/src/chiffrement";
-import { ENTETE, executer, infoCle } from "./sauvegarde";
+import { ENTETE, envLibpq, executer, infoCle, local } from "./sauvegarde";
 
 export interface OptionsRestauration {
   fichier: string;
@@ -22,6 +22,12 @@ export async function restaurer(o: OptionsRestauration) {
   if (!ENTETE.every((b, i) => octets[i] === b)) throw new Error("restauration : fichier de sauvegarde inconnu");
   const origine = o.origine ?? (o.fichier.split(/[\\/]/).pop() ?? "").replace(/-\d{4}-\d\d-\d\dT.*$/, "");
   const dump = await dechiffrer(infoCle(origine), octets.subarray(ENTETE.length), o.cle);
+  // AUTO_PG_LOCAL=1 : pg_restore local vers DATABASE_URL_DIRECT, base `o.base`, sans docker.
+  if (local() && Bun.env.DATABASE_URL_DIRECT) {
+    const libpq = { ...envLibpq(Bun.env.DATABASE_URL_DIRECT), PGDATABASE: o.base };
+    await executer(["pg_restore", "-d", o.base, "--no-owner", "--exit-on-error"], dump, libpq);
+    return;
+  }
   await executer(
     [
       "docker",

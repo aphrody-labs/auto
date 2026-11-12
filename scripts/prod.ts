@@ -1,30 +1,41 @@
-// Exploitation de la production (fr1 aujourd'hui, usa après bascule) : `ay ssh` pour l'hôte et les conteneurs,
-// sonde publique par fetch.
+// Exploitation de la production sur usa (alias ssh `prd`, IP publique ; le maillage 10.200.77.x peut être coupé) :
+// `ay ssh` pour l'hôte et les conteneurs, sonde publique par fetch. Données et fichiers d'environnement : /srv/auto.
 //   bun run prod etat       hôte, conteneurs auto-*, santé publique
 //   bun run prod deployer   image construite ici, chargée sur le serveur, API, worker et web relancés
 import { $ } from "bun";
 import { empreinteFichiers } from "./empreinte";
 
 const URL_PUBLIQUE = "https://auto.aphrody.com";
-const HOTE = Bun.env.AUTO_HOTE ?? "fr1";
+const HOTE = Bun.env.AUTO_HOTE ?? "prd";
+const RACINE = "/srv/auto";
 
-/** Conteneurs applicatifs : même image, commande et options propres (le worker n'expose pas de port). */
+/** Options communes : non-root, système de fichiers en lecture seule, journaux bornés. */
+const COMMUN =
+  "--init --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true " +
+  "--tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 --tmpfs /home/auto:rw,nosuid,nodev,size=256m,uid=10001,gid=10001 " +
+  "--log-driver json-file --log-opt max-size=10m --log-opt max-file=3";
+
+/** Conteneurs applicatifs : options propres (le worker n'expose pas de port). */
 const CONTENEURS = [
   {
     nom: "auto-api",
-    options: "-v /home/ubuntu/auto/arrivages:/mnt/arrivages:ro",
+    image: "auto-app:dev",
+    options: `--shm-size 256m -v ${RACINE}/arrivages:/mnt/arrivages:ro`,
     commande: "bun apps/api/src/index.ts",
   },
   // Le worker rappelle l'API (nœuds « Action auto » des workflows) par le réseau interne.
   {
     nom: "auto-worker",
-    options:
-      "--no-healthcheck --group-add 1000 -e AUTO_API_URL=http://auto-api:3000 -v /home/ubuntu/auto/arrivages:/mnt/arrivages",
+    image: "auto-app:dev",
+    options: `--shm-size 256m --no-healthcheck -e AUTO_API_URL=http://auto-api:3000 -v ${RACINE}/arrivages:/mnt/arrivages`,
     commande: "bun apps/worker/src/index.ts",
   },
   {
     nom: "auto-web",
-    options: "-e PORT=3001 -e AUTO_API_URL=http://auto-api:3000",
+    image: "auto-app:dev",
+    options:
+      `-e PORT=3001 -e AUTO_API_URL=http://auto-api:3000 -e AUTO_MEDIA_DIR=/mnt/media -e AUTO_DISTRIBUTIONS_DIR=/mnt/distributions ` +
+      `-v ${RACINE}/media:/mnt/media:ro -v ${RACINE}/distributions:/mnt/distributions:ro`,
     commande: "bun apps/web/src/index.ts",
   },
 ];
@@ -59,17 +70,18 @@ async function deployerComplet(natif: string) {
   await $`mkdir -p .cache && docker save auto-app:dev | gzip -1 > ${archive}`;
   const empreinte = new Bun.CryptoHasher("sha256").update(await Bun.file(archive).bytes()).digest("hex");
   for (let essai = 1; ; essai++) {
-    const copie = await $`scp -q -o BatchMode=yes -o ServerAliveInterval=10 ${archive} ${HOTE}:auto/auto-app.tar.gz`
-      .nothrow()
-      .quiet();
-    const distante = await distant("sha256sum ~/auto/auto-app.tar.gz | cut -d' ' -f1").nothrow().quiet();
+    const copie =
+      await $`scp -q -o BatchMode=yes -o ServerAliveInterval=10 ${archive} ${HOTE}:${RACINE}/auto-app.tar.gz`
+        .nothrow()
+        .quiet();
+    const distante = await distant(`sha256sum ${RACINE}/auto-app.tar.gz | cut -d' ' -f1`).nothrow().quiet();
     if (copie.exitCode === 0 && distante.text().includes(empreinte)) break;
     if (essai === 5) throw new Error("copie de l'image impossible après 5 essais");
     console.error(`copie de l'image interrompue, nouvel essai (${essai + 1}/5)`);
     await Bun.sleep(10_000);
   }
   await distant(
-    `gunzip -c ~/auto/auto-app.tar.gz | docker load && rm ~/auto/auto-app.tar.gz && docker tag auto-app:dev auto-app:base && echo ${natif} > ~/auto/natif.txt`,
+    `gunzip -c ${RACINE}/auto-app.tar.gz | docker load && rm ${RACINE}/auto-app.tar.gz && docker tag auto-app:dev auto-app:base && echo ${natif} > ${RACINE}/natif.txt`,
   );
   await $`rm -f ${archive}`;
 }
@@ -79,25 +91,27 @@ async function deployerComplet(natif: string) {
  * `auto-app:base` qui contient déjà la bibliothèque native (docker/app-maj.Dockerfile).
  */
 async function deployerRapide() {
-  await $`tar czf - --exclude=node_modules --exclude=dist --exclude=target --exclude=gen package.json bun.lock bunfig.toml tsconfig.json apps packages docker/app-maj.Dockerfile | ssh -o BatchMode=yes ${HOTE} "rm -rf ~/auto/src && mkdir -p ~/auto/src && tar xzf - -C ~/auto/src"`;
-  await distant("docker build -q -f ~/auto/src/docker/app-maj.Dockerfile -t auto-app:dev ~/auto/src >/dev/null");
+  await $`tar czf - --exclude=node_modules --exclude=dist --exclude=target --exclude=gen package.json bun.lock bunfig.toml tsconfig.json apps packages docker/app-maj.Dockerfile | ssh -o BatchMode=yes ${HOTE} "rm -rf ${RACINE}/src && mkdir -p ${RACINE}/src && tar xzf - -C ${RACINE}/src"`;
+  await distant(`docker build -q -f ${RACINE}/src/docker/app-maj.Dockerfile -t auto-app:dev ${RACINE}/src >/dev/null`);
 }
 
 async function deployer() {
   const natif = await empreinteNatif();
   const distant_ = (
-    await distant("cat ~/auto/natif.txt 2>/dev/null; docker image inspect auto-app:base >/dev/null 2>&1 && echo base")
+    await distant(
+      `cat ${RACINE}/natif.txt 2>/dev/null; docker image inspect auto-app:base >/dev/null 2>&1 && echo base`,
+    )
       .nothrow()
       .quiet()
   ).text();
   if (distant_.includes(natif) && distant_.includes("base")) await deployerRapide();
   else await deployerComplet(natif);
-  await distant("sudo install -d -o 10001 -g 1000 -m 2770 /home/ubuntu/auto/arrivages");
+  await distant(`install -d -o 10001 -g 10001 -m 2770 ${RACINE}/arrivages`);
   const relance = CONTENEURS.map(
     (c) =>
-      `docker rm -f ${c.nom} >/dev/null 2>&1; docker run -d --name ${c.nom} --network auto-prod --restart unless-stopped ${c.options} --env-file prod.env auto-app:dev ${c.commande} >/dev/null`,
+      `docker rm -f ${c.nom} >/dev/null 2>&1; docker run -d --name ${c.nom} --network auto-prod --restart unless-stopped ${COMMUN} ${c.options} --env-file prod.env ${c.image} ${c.commande} >/dev/null`,
   ).join(" && ");
-  await distant(`cd ~/auto && ${relance}`);
+  await distant(`cd ${RACINE} && ${relance}`);
   for (let i = 0; i < 12; i++) {
     if (await sonde()) return etat();
     await Bun.sleep(5000);

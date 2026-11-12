@@ -1,29 +1,78 @@
 # Migration de auto : fr1 vers usa
 
-Relevé en lecture seule le 2026-11-12 (`ay ssh exec fr1|usa|fr2`). Aucune action n'a été faite sur les
-serveurs. Les valeurs secrètes ne figurent nulle part ici : seulement les noms de variables.
+Relevé en lecture seule le 2026-11-12 (`ay ssh exec fr1|usa|fr2`), puis bascule faite le même jour (section 5). Les
+valeurs secrètes ne figurent nulle part ici : seulement les noms de variables.
+
+## 5. Bascule réalisée (2026-11-12, 11:25-11:50 UTC)
+
+État : auto tourne sur usa uniquement, entièrement auto-hébergé (plus de Neon, R2 ni tunnel SSH) ; fr1 est désinstallé.
+
+- Données : `pg_dump` final depuis Neon refusé (`exceeded the quota`). Restauration du dump nocturne
+  `auto-2026-11-09T03-15-43-749Z.dump.chiffre` : données arrêtées au **2026-11-09 03:15:43 UTC** (dernier job créé
+  03:15:00). Rôles `auto_app` et `auto_worker` créés avant `pg_restore` ; ACL par défaut propres à Neon (`cloud_admin`,
+  `neon_superuser`) écartées de la liste TOC. 73 tables, 580 Mo.
+- Conteneurs usa, réseau `auto-prod` (172.19.0.0/16), aucun port publié, données sous `/srv/auto` :
+
+  | Conteneur       | Image                                       | Taille  | Rôle                                                       |
+  | --------------- | ------------------------------------------- | ------- | ---------------------------------------------------------- |
+  | `auto-postgres` | `postgres:18-alpine` (18.6)                 | 434 Mo  | base `auto`, `/srv/auto/postgres`                          |
+  | `auto-s3`       | `rustfs/rustfs:1.0.5`                       | 486 Mo  | S3 (`auto-archives`), `/srv/auto/s3`                       |
+  | `auto-llm`      | `auto-llm:v0.9.0` (`docker/llm.Dockerfile`) | 62 Mo   | llama.cpp v0.9.0, alias `auto-extraction`, 3 CPU, 6 Go     |
+  | `auto-api`      | `auto-app:20261112T112714Z-alpine`          | 1,76 Go | API, `/srv/auto/arrivages` en lecture                      |
+  | `auto-worker`   | `auto-app:20261112T112714Z-alpine`          | 1,76 Go | worker (seul worker actif)                                 |
+  | `auto-web`      | `auto-web:20261112T112714Z-alpine`          | 503 Mo  | front, `/srv/auto/media` et `/srv/auto/distributions`      |
+  | `auto-tunnel`   | `cloudflare/cloudflared:latest` (2026.10.6) | 99 Mo   | tunnel `auto-usa` `6df6fb40-...` -> `http://auto-web:3001` |
+
+- Images : `docker/app.Dockerfile` sur `oven/bun:1.4.4-alpine` (Bun.Image, Bun.WebView présents ; Bun.Video absent,
+  les nœuds vidéo échouent proprement), Chromium et OCR par `apk`, natif musl de
+  `ay build -t linux-musl --release --dylib -- -p auto-ffi` (FFI vérifiée dans le conteneur). Construites sur usa.
+- S3 : seul l'archivage probant (`archiverFichiers`) utilise `S3_*` ; `media/` et `distributions/` restent des
+  montages en lecture seule (copiés de fr1 par rsync).
+- n8n : non déployé. La production n'a pas de `N8N_WEBHOOK_URL` (le worker journalise « livraison désactivée ») ; le
+  moteur Rust de workflows n'existe pas encore.
+- IA : `AUTO_LLM_URL=http://auto-llm:8080/v1`. Le llama-server de shenron (127.0.0.1:8799) sert un LoRA propre à
+  shenron (`shenron-chat-v2`, une seule file) : non réutilisé. `auto-llm` charge une copie du même modèle de base
+  Qwen3 4B Q4 (`/srv/auto/llm/model.gguf`), sans LoRA, raisonnement désactivé. Pas d'image llama.cpp officielle
+  (Ubuntu) : compilé sur Alpine.
+- DNS : CNAME proxifié `auto.aphrody.com` -> `6df6fb40-b493-4888-9add-f3e5b1377a71.cfargotunnel.com` ; ancien tunnel
+  `auto` (`f8ba0d09-...`) supprimé. Tunnels de shenron non modifiés.
+- Sauvegarde : `infra/usa/sauvegarde.sh` installé en `/srv/auto/sauvegarde.sh`, unité `auto-sauvegarde.timer`
+  (03:15 UTC) : image `auto-sauvegarde` (pg_dump 18, `AUTO_PG_LOCAL=1`, chiffré par `AUTO_CLE_MAITRE`) et archive
+  `s3-*.tar.zst` du seau, 14 de chaque, dans `/srv/auto/sauvegardes`. Premier passage 11:42 UTC vérifié (déchiffré,
+  73 tables). Copie finale conservée : `/srv/auto/sauvegardes/fr1-final/` (dump du 09/11, `prod.env` et `tunnel.env`
+  de fr1 chiffrés par la clé maître, info `archive:fr1:<nom>`), plus `/srv/offsite/vps/auto-sauvegardes`.
+- Vérifié : `https://auto.aphrody.com/health` (version `20261112T112714Z-alpine`), `/` et `/app` 200,
+  `/api/auth/get-session` 200, connexion par mot de passe faux 401 (base lue), jobs `automatisations.planifier`
+  traités, extraction JSON par `auto-llm` en 4 s.
+- fr1 : conteneurs `auto-*`, images `auto-app:*`, `auto-web:*`, `cloudflare/cloudflared:latest`, réseau `auto-prod`,
+  cron `sauvegarde.sh`, `auto-ia-tunnel.service`, `~/apps/auto` et le lien `~/auto` supprimés. L'ancienne pile
+  Aphrody (fin de la section 4) n'a pas été touchée.
+- Exploitation : `bun run prod etat|deployer` vise `prd` (usa par IP publique ; le maillage 10.200.77.5 ne répondait
+  pas depuis le poste ni depuis fr1 pendant la bascule).
+- Retour arrière : plus de fr1 ; restaurer depuis `/srv/auto/sauvegardes` avec l'image `auto-sauvegarde`
+  (`bun scripts/restauration.ts <fichier> <base>`, `AUTO_PG_LOCAL=1`).
 
 ## 0. Bloquants à lever avant la bascule
 
-| Bloquant                                                                                                                         | Constat                                                                                                                        | Action propriétaire                                                                                       |
-| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Base Neon hors quota                                                                                                             | Requête depuis `auto-api` : `PostgresError: Your account or project has exceeded the quota`. `/health` répond 200 (sans base). | Relever le quota Neon, ou basculer sur le Postgres local de usa (étape 3, option B).                      |
-| Sauvegardes nocturnes en échec                                                                                                   | Dernier dump chiffré réussi : `auto-2026-11-09T03-15-43-749Z.dump.chiffre` (275 Mo), copié sur usa `/srv/offsite/vps/auto-sauvegardes`. | Faire un dump frais dès que la base répond ; la clé `AUTO_CLE_MAITRE` est nécessaire pour le déchiffrer. |
-| Bun du Dockerfile introuvable                                                                                                    | `docker/app.Dockerfile` télécharge `aphrody-labs/bun` release `bun-v1.4.6` : le dépôt n'a aucune release.                      | Publier la release du fork (glibc et musl) ou fixer une autre source de Bun 1.4.6+.                      |
-| Moteur IA hors service                                                                                                           | `AUTO_LLM_URL` vise `172.26.0.1:18799`, tunnel SSH `auto-ia-tunnel.service` vers `dbfr:8799`, unité `inactive`.                 | Décider du moteur IA cible sur usa (même machine que `dbfr` ?).                                           |
-| Stockage S3 inexistant                                                                                                           | `S3_ENDPOINT` vise `auto-minio`, conteneur absent ; `~/auto/minio.env` reste.                                                  | Choisir R2 (bucket dédié) ou supprimer les variables `S3_*` si les médias restent sur disque.            |
+| Bloquant                       | Constat                                                                                                                                 | Action propriétaire                                                                                      |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Base Neon hors quota           | Requête depuis `auto-api` : `PostgresError: Your account or project has exceeded the quota`. `/health` répond 200 (sans base).          | Relever le quota Neon, ou basculer sur le Postgres local de usa (étape 3, option B).                     |
+| Sauvegardes nocturnes en échec | Dernier dump chiffré réussi : `auto-2026-11-09T03-15-43-749Z.dump.chiffre` (275 Mo), copié sur usa `/srv/offsite/vps/auto-sauvegardes`. | Faire un dump frais dès que la base répond ; la clé `AUTO_CLE_MAITRE` est nécessaire pour le déchiffrer. |
+| Bun du Dockerfile introuvable  | `docker/app.Dockerfile` télécharge `aphrody-labs/bun` release `bun-v1.4.6` : le dépôt n'a aucune release.                               | Publier la release du fork (glibc et musl) ou fixer une autre source de Bun 1.4.6+.                      |
+| Moteur IA hors service         | `AUTO_LLM_URL` vise `172.26.0.1:18799`, tunnel SSH `auto-ia-tunnel.service` vers `dbfr:8799`, unité `inactive`.                         | Décider du moteur IA cible sur usa (même machine que `dbfr` ?).                                          |
+| Stockage S3 inexistant         | `S3_ENDPOINT` vise `auto-minio`, conteneur absent ; `~/auto/minio.env` reste.                                                           | Choisir R2 (bucket dédié) ou supprimer les variables `S3_*` si les médias restent sur disque.            |
 
 ## 1. Ce qui tourne sur fr1 aujourd'hui
 
 Hôte `fr1` (`ssh vps`, ubuntu), répertoire `/home/ubuntu/auto` (aussi `~/apps/auto`), 4,0 Go, pas un dépôt git.
 Conteneurs lancés par `docker run` (`scripts/prod.ts`, `scripts/release-vps.ts`), sans compose.
 
-| Conteneur     | Image                                          | Taille  | Commande                       | Réseau      | Montages                                                                                       | Santé                      |
-| ------------- | ---------------------------------------------- | ------- | ------------------------------ | ----------- | ---------------------------------------------------------------------------------------------- | -------------------------- |
-| `auto-api`    | `auto-app:20261105T134013Z-88f036fd`           | 1,94 Go | `bun apps/api/src/index.ts`    | `auto-prod` | `~/auto/arrivages` -> `/mnt/arrivages` (8 Ko)                                                  | `/health` sur 3000         |
-| `auto-worker` | `auto-app:20261105T134013Z-88f036fd`           | 1,94 Go | `bun apps/worker/src/index.ts` | `auto-prod` | `~/auto/arrivages` -> `/mnt/arrivages`                                                         | aucune (`--no-healthcheck`) |
-| `auto-web`    | `auto-web:20261105T134013Z-88f036fd`           | 754 Mo  | `bun apps/web/src/index.ts`    | `auto-prod` | `~/auto/media` -> `/mnt/media` (65 Mo), `~/auto/distributions` -> `/mnt/distributions` (533 Mo) | `/health` sur 3001         |
-| `auto-tunnel` | `cloudflare/cloudflared:latest`                | 99 Mo   | `tunnel --no-autoupdate run`   | `auto-prod` | aucun                                                                                          | -                          |
+| Conteneur     | Image                                | Taille  | Commande                       | Réseau      | Montages                                                                                        | Santé                       |
+| ------------- | ------------------------------------ | ------- | ------------------------------ | ----------- | ----------------------------------------------------------------------------------------------- | --------------------------- |
+| `auto-api`    | `auto-app:20261105T134013Z-88f036fd` | 1,94 Go | `bun apps/api/src/index.ts`    | `auto-prod` | `~/auto/arrivages` -> `/mnt/arrivages` (8 Ko)                                                   | `/health` sur 3000          |
+| `auto-worker` | `auto-app:20261105T134013Z-88f036fd` | 1,94 Go | `bun apps/worker/src/index.ts` | `auto-prod` | `~/auto/arrivages` -> `/mnt/arrivages`                                                          | aucune (`--no-healthcheck`) |
+| `auto-web`    | `auto-web:20261105T134013Z-88f036fd` | 754 Mo  | `bun apps/web/src/index.ts`    | `auto-prod` | `~/auto/media` -> `/mnt/media` (65 Mo), `~/auto/distributions` -> `/mnt/distributions` (533 Mo) | `/health` sur 3001          |
+| `auto-tunnel` | `cloudflare/cloudflared:latest`      | 99 Mo   | `tunnel --no-autoupdate run`   | `auto-prod` | aucun                                                                                           | -                           |
 
 Tous en `restart=unless-stopped`, utilisateur `10001:10001` (cloudflared : `65532`), aucun port publié. Réseau
 `auto-prod` : `172.26.0.0/16`, passerelle `172.26.0.1`. Aucun volume Docker nommé. Version en ligne :

@@ -45,6 +45,9 @@ export function envLibpq(url: string): Record<string, string> {
   };
 }
 
+/** pg_dump et pg_restore installés localement (image `sauvegarde` de docker/app.Dockerfile). */
+export const local = () => Bun.env.AUTO_PG_LOCAL === "1";
+
 export const infoCle = (base: string) => `sauvegarde:${base}`;
 
 export async function executer(cmd: string[], entree?: Uint8Array, env?: Record<string, string>): Promise<Uint8Array> {
@@ -67,21 +70,24 @@ export async function executer(cmd: string[], entree?: Uint8Array, env?: Record<
 export async function sauvegarder(options: OptionsSauvegarde = {}): Promise<string> {
   const o = defauts(options);
   const libpq = o.url ? envLibpq(o.url) : null;
+  // AUTO_PG_LOCAL=1 (image `sauvegarde`) : pg_dump présent dans le conteneur, sans appel à docker.
   const dump = libpq
-    ? await executer(
-        [
-          "docker",
-          "run",
-          "--rm",
-          ...Object.keys(libpq).flatMap((k) => ["-e", k]),
-          Bun.env.AUTO_PG_IMAGE ?? "postgres:18-alpine",
-          "pg_dump",
-          "--format=custom",
-          "--no-owner",
-        ],
-        undefined,
-        libpq,
-      )
+    ? local()
+      ? await executer(["pg_dump", "--format=custom", "--no-owner"], undefined, libpq)
+      : await executer(
+          [
+            "docker",
+            "run",
+            "--rm",
+            ...Object.keys(libpq).flatMap((k) => ["-e", k]),
+            Bun.env.AUTO_PG_IMAGE ?? "postgres:18-alpine",
+            "pg_dump",
+            "--format=custom",
+            "--no-owner",
+          ],
+          undefined,
+          libpq,
+        )
     : await executer([
         "docker",
         "exec",
