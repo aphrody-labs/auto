@@ -1,0 +1,546 @@
+//! Charts: title, plot area with axes and gridlines, series marks, legend.
+
+use deckcraft_color::{ColorTransform, Rgba, SchemeSlot};
+use deckcraft_model::Shape;
+use deckcraft_model::chart::{Chart, ChartType, nice_scale};
+use deckcraft_model::resolve::Ctx;
+use deckcraft_model::style::{ColorRef, Fill};
+use deckcraft_model::text::{Align, Anchor, Bullet, TextBody};
+use kurbo::{Affine, BezPath, Point, Rect, Shape as _};
+use vello_cpu::RenderContext;
+
+use crate::color;
+
+const SLOTS: [SchemeSlot; 6] = [
+    SchemeSlot::Accent1,
+    SchemeSlot::Accent2,
+    SchemeSlot::Accent3,
+    SchemeSlot::Accent4,
+    SchemeSlot::Accent5,
+    SchemeSlot::Accent6,
+];
+
+/// Colour of series/point `i`: accents, then darker and lighter rounds.
+pub fn series_color(ctx: &Ctx, c: &Chart, i: usize) -> Rgba {
+    let slot = SLOTS.get(i % 6).copied().unwrap_or(SchemeSlot::Accent1);
+    let base = ctx.color(&ColorRef::scheme(slot), None);
+    let mono = c.palette.starts_with("monochrome");
+    let base = if mono {
+        ctx.color(&ColorRef::scheme(SchemeSlot::Accent1), None)
+    } else {
+        base
+    };
+    let round = if mono { i } else { i / 6 };
+    match round {
+        0 => base,
+        1 => deckcraft_color::apply(base, &[ColorTransform::Shade(60000)]),
+        2 => deckcraft_color::apply(base, &[ColorTransform::Tint(60000)]),
+        n => deckcraft_color::apply(
+            base,
+            &[ColorTransform::LumMod(100000 - (n as i32 % 5) * 12000)],
+        ),
+    }
+}
+
+fn series_fill(ctx: &Ctx, c: &Chart, i: usize, s: Option<&deckcraft_model::chart::Series>) -> Rgba {
+    match s.and_then(|s| s.fill.as_ref()) {
+        Some(Fill::Solid { color: cc }) => ctx.color(cc, None),
+        _ => series_color(ctx, c, i),
+    }
+}
+
+fn label(
+    ctx: &mut RenderContext,
+    rctx: &Ctx,
+    m: Affine,
+    text: &str,
+    r: Rect,
+    size: f64,
+    align: Align,
+    anchor: Anchor,
+    col: Rgba,
+    bold: bool,
+) {
+    let mut body = TextBody::from_text(text);
+    body.body.inset_l = Some(0.0);
+    body.body.inset_r = Some(0.0);
+    body.body.inset_t = Some(0.0);
+    body.body.inset_b = Some(0.0);
+    body.body.anchor = Some(anchor);
+    body.body.wrap = Some(false);
+    for p in &mut body.paragraphs {
+        p.props.align = Some(align);
+        p.props.bullet = Some(Bullet::None);
+        p.props.margin_left = Some(0.0);
+        p.props.indent = Some(0.0);
+        for run in &mut p.runs {
+            run.props.size = Some(size);
+            run.props.bold = Some(bold);
+            run.props.fill = Some(Fill::solid(ColorRef::rgb(col)));
+        }
+    }
+    let tmp = Shape {
+        text: Some(body.clone()),
+        ..Default::default()
+    };
+    crate::draw_text(
+        ctx,
+        rctx,
+        &tmp,
+        &body,
+        r,
+        m,
+        &deckcraft_text::NoFields,
+        None,
+    );
+}
+
+fn fmt_num(v: f64) -> String {
+    if (v - v.round()).abs() < 1e-9 {
+        format!("{}", v.round() as i64)
+    } else {
+        format!("{v:.1}")
+    }
+}
+
+pub fn draw(ctx: &mut RenderContext, rctx: &Ctx, c: &Chart, m: Affine, w: f64, h: f64) {
+    let text_col = c
+        .text_color
+        .as_ref()
+        .map(|t| rctx.color(t, None))
+        .unwrap_or(Rgba::rgb(0x59, 0x59, 0x59));
+    let grid_col = Rgba::rgb(0xD9, 0xD9, 0xD9);
+    if let Some(f) = &c.chart_fill {
+        crate::paint::fill_path(
+            ctx,
+            rctx,
+            f,
+            None,
+            &Rect::new(0.0, 0.0, w, h).to_path(0.1),
+            Rect::new(0.0, 0.0, w, h),
+            m,
+            deckcraft_geom::preset::FillMode::Norm,
+            1.0,
+            rctx.pres,
+        );
+    }
+    let base = (h.min(w) / 22.0).clamp(7.0, 18.0);
+    let mut area = Rect::new(w * 0.04, h * 0.04, w * 0.96, h * 0.96);
+    if let Some(t) = &c.title {
+        label(
+            ctx,
+            rctx,
+            m,
+            t,
+            Rect::new(0.0, area.y0, w, area.y0 + base * 1.8),
+            base * 1.4,
+            Align::Center,
+            Anchor::Top,
+            text_col,
+            false,
+        );
+        area.y0 += base * 2.4;
+    }
+    let pie = matches!(c.kind, ChartType::Pie | ChartType::Doughnut);
+    // Legend at the bottom.
+    let legend_items: Vec<(String, Rgba)> = if pie {
+        c.categories
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.clone(), series_color(rctx, c, i)))
+            .collect()
+    } else {
+        c.series
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.name.clone(), series_fill(rctx, c, i, Some(s))))
+            .collect()
+    };
+    if c.legend.is_some() && !legend_items.is_empty() {
+        let ly = area.y1 - base * 1.4;
+        let item_w = (legend_items
+            .iter()
+            .map(|(n, _)| n.chars().count() as f64 * base * 0.55 + base * 1.6)
+            .sum::<f64>())
+        .min(w * 0.9);
+        let mut x = (w - item_w) / 2.0;
+        for (name, col) in &legend_items {
+            ctx.set_transform(m);
+            ctx.set_paint(color(*col, 1.0));
+            ctx.fill_rect(&Rect::new(x, ly + base * 0.3, x + base * 0.7, ly + base));
+            let tw = name.chars().count() as f64 * base * 0.55 + base;
+            label(
+                ctx,
+                rctx,
+                m,
+                name,
+                Rect::new(x + base, ly, x + base + tw, ly + base * 1.3),
+                base,
+                Align::Left,
+                Anchor::Middle,
+                text_col,
+                false,
+            );
+            x += tw + base * 0.6;
+        }
+        area.y1 = ly - base * 0.5;
+    }
+    if pie {
+        let Some(s) = c.series.first() else { return };
+        let vals: Vec<f64> = s.values.iter().map(|v| v.unwrap_or(0.0).max(0.0)).collect();
+        let total: f64 = vals.iter().sum();
+        if total <= 0.0 {
+            return;
+        }
+        let r = (area.width().min(area.height()) / 2.0) * 0.95;
+        let cen = area.center();
+        let mut a0 = -std::f64::consts::FRAC_PI_2;
+        for (i, v) in vals.iter().enumerate() {
+            let sweep = v / total * std::f64::consts::TAU;
+            let mut p = BezPath::new();
+            p.move_to(cen);
+            let arc = kurbo::Arc::new(cen, (r, r), a0, sweep, 0.0);
+            p.line_to(Point::new(cen.x + r * a0.cos(), cen.y + r * a0.sin()));
+            p.extend(arc.append_iter(0.1));
+            p.close_path();
+            ctx.set_transform(m);
+            let col = s
+                .point_fills
+                .iter()
+                .find(|(k, _)| *k == i)
+                .and_then(|(_, f)| {
+                    if let Fill::Solid { color: cc } = f {
+                        Some(rctx.color(cc, None))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| series_color(rctx, c, i));
+            ctx.set_paint(color(col, 1.0));
+            ctx.fill_path(&p);
+            ctx.set_paint(color(Rgba::WHITE, 1.0));
+            ctx.set_stroke(kurbo::Stroke::new(1.0));
+            ctx.stroke_path(&p);
+            if c.data_labels {
+                let mid = a0 + sweep / 2.0;
+                let lp = Point::new(cen.x + r * 0.65 * mid.cos(), cen.y + r * 0.65 * mid.sin());
+                label(
+                    ctx,
+                    rctx,
+                    m,
+                    &fmt_num(*v),
+                    Rect::new(lp.x - 30.0, lp.y - 10.0, lp.x + 30.0, lp.y + 10.0),
+                    base,
+                    Align::Center,
+                    Anchor::Middle,
+                    Rgba::WHITE,
+                    false,
+                );
+            }
+            a0 += sweep;
+        }
+        if c.kind == ChartType::Doughnut {
+            ctx.set_transform(m);
+            ctx.set_paint(color(Rgba::WHITE, 1.0));
+            ctx.fill_path(&kurbo::Circle::new(cen, r * c.hole_size.clamp(0.1, 0.9)).to_path(0.1));
+        }
+        return;
+    }
+    let (lo, hi) = c.value_range();
+    let (min, max, step) = nice_scale(lo.min(0.0), hi);
+    let horiz = c.kind.horizontal();
+    // Axis label gutter.
+    let gutter = base * 3.0;
+    let plot = if horiz {
+        Rect::new(
+            area.x0 + gutter * 1.5,
+            area.y0,
+            area.x1,
+            area.y1 - base * 1.6,
+        )
+    } else {
+        Rect::new(area.x0 + gutter, area.y0, area.x1, area.y1 - base * 1.8)
+    };
+    if let Some(f) = &c.plot_fill {
+        crate::paint::fill_path(
+            ctx,
+            rctx,
+            f,
+            None,
+            &plot.to_path(0.1),
+            plot,
+            m,
+            deckcraft_geom::preset::FillMode::Norm,
+            1.0,
+            rctx.pres,
+        );
+    }
+    let span = (max - min).max(1e-9);
+    let to_v = |v: f64| {
+        if horiz {
+            plot.x0 + (v - min) / span * plot.width()
+        } else {
+            plot.y1 - (v - min) / span * plot.height()
+        }
+    };
+    // Gridlines and value labels.
+    let n_steps = ((span / step).round() as i64).clamp(1, 50);
+    for k in 0..=n_steps {
+        let v = min + k as f64 * step;
+        let pos = to_v(v);
+        let mut g = BezPath::new();
+        if horiz {
+            g.move_to((pos, plot.y0));
+            g.line_to((pos, plot.y1));
+            label(
+                ctx,
+                rctx,
+                m,
+                &fmt_num(v),
+                Rect::new(pos - 30.0, plot.y1 + 2.0, pos + 30.0, plot.y1 + base * 1.5),
+                base,
+                Align::Center,
+                Anchor::Top,
+                text_col,
+                false,
+            );
+        } else {
+            g.move_to((plot.x0, pos));
+            g.line_to((plot.x1, pos));
+            label(
+                ctx,
+                rctx,
+                m,
+                &fmt_num(v),
+                Rect::new(area.x0, pos - base, plot.x0 - base * 0.4, pos + base),
+                base,
+                Align::Right,
+                Anchor::Middle,
+                text_col,
+                false,
+            );
+        }
+        if c.gridlines {
+            ctx.set_transform(m);
+            ctx.set_paint(color(grid_col, 1.0));
+            ctx.set_stroke(kurbo::Stroke::new(0.75));
+            ctx.stroke_path(&g);
+        }
+    }
+    let ncat = c
+        .categories
+        .len()
+        .max(c.series.iter().map(|s| s.values.len()).max().unwrap_or(0))
+        .max(1);
+    let band = if horiz {
+        plot.height() / ncat as f64
+    } else {
+        plot.width() / ncat as f64
+    };
+    // Category labels.
+    for (i, name) in c.categories.iter().enumerate() {
+        let mid = if horiz {
+            plot.y0 + band * (i as f64 + 0.5)
+        } else {
+            plot.x0 + band * (i as f64 + 0.5)
+        };
+        if horiz {
+            label(
+                ctx,
+                rctx,
+                m,
+                name,
+                Rect::new(area.x0, mid - base, plot.x0 - base * 0.4, mid + base),
+                base,
+                Align::Right,
+                Anchor::Middle,
+                text_col,
+                false,
+            );
+        } else {
+            label(
+                ctx,
+                rctx,
+                m,
+                name,
+                Rect::new(
+                    mid - band / 2.0,
+                    plot.y1 + 3.0,
+                    mid + band / 2.0,
+                    plot.y1 + base * 1.6,
+                ),
+                base,
+                Align::Center,
+                Anchor::Top,
+                text_col,
+                false,
+            );
+        }
+    }
+    let ns = c.series.len().max(1);
+    let zero = to_v(0.0f64.clamp(min, max));
+    if c.kind.is_bar_like() {
+        let gap = c.gap_width.clamp(0.0, 5.0);
+        let group = band / (1.0 + gap);
+        let stacked = c.kind.stacked();
+        let bar = if stacked { group } else { group / ns as f64 };
+        for i in 0..ncat {
+            let mut pos_acc = 0.0;
+            let mut neg_acc = 0.0;
+            let total: f64 = if c.kind.percent() {
+                c.series
+                    .iter()
+                    .map(|s| s.values.get(i).copied().flatten().unwrap_or(0.0).abs())
+                    .sum::<f64>()
+                    .max(1e-9)
+            } else {
+                1.0
+            };
+            for (si, s) in c.series.iter().enumerate() {
+                let v = s.values.get(i).copied().flatten().unwrap_or(0.0) / total;
+                let start = band * i as f64
+                    + (band - group) / 2.0
+                    + if stacked { 0.0 } else { bar * si as f64 };
+                let (a, b) = if stacked {
+                    if v >= 0.0 {
+                        let r = (pos_acc, pos_acc + v);
+                        pos_acc += v;
+                        r
+                    } else {
+                        let r = (neg_acc + v, neg_acc);
+                        neg_acc += v;
+                        r
+                    }
+                } else {
+                    (0.0f64.min(v), 0.0f64.max(v))
+                };
+                let r = if horiz {
+                    Rect::new(to_v(a), plot.y0 + start, to_v(b), plot.y0 + start + bar)
+                } else {
+                    Rect::new(plot.x0 + start, to_v(b), plot.x0 + start + bar, to_v(a))
+                };
+                ctx.set_transform(m);
+                ctx.set_paint(color(series_fill(rctx, c, si, Some(s)), 1.0));
+                ctx.fill_rect(&r.abs());
+                if c.data_labels {
+                    let t = fmt_num(s.values.get(i).copied().flatten().unwrap_or(0.0));
+                    let lr = if horiz {
+                        Rect::new(r.x1 + 2.0, r.y0, r.x1 + 40.0, r.y1)
+                    } else {
+                        Rect::new(r.x0 - 10.0, r.y0 - base * 1.4, r.x1 + 10.0, r.y0)
+                    };
+                    label(
+                        ctx,
+                        rctx,
+                        m,
+                        &t,
+                        lr,
+                        base * 0.9,
+                        if horiz { Align::Left } else { Align::Center },
+                        if horiz {
+                            Anchor::Middle
+                        } else {
+                            Anchor::Bottom
+                        },
+                        text_col,
+                        false,
+                    );
+                }
+            }
+        }
+    } else {
+        // Lines, areas, scatter, radar (drawn as lines).
+        let stacked = c.kind.stacked();
+        let mut acc = vec![0.0; ncat];
+        for (si, s) in c.series.iter().enumerate() {
+            let col = series_fill(rctx, c, si, Some(s));
+            let mut pts = vec![];
+            for i in 0..ncat {
+                let Some(v) = s.values.get(i).copied().flatten() else {
+                    continue;
+                };
+                let v = if stacked {
+                    let base_v = acc.get(i).copied().unwrap_or(0.0);
+                    if let Some(a) = acc.get_mut(i) {
+                        *a += v;
+                    }
+                    base_v + v
+                } else {
+                    v
+                };
+                let x = match c.kind {
+                    ChartType::Scatter | ChartType::Bubble => {
+                        let xs: Vec<f64> = s.x_values.iter().flatten().copied().collect();
+                        let (xl, xh) = (
+                            xs.iter().copied().fold(f64::MAX, f64::min),
+                            xs.iter().copied().fold(f64::MIN, f64::max),
+                        );
+                        let xv = s.x_values.get(i).copied().flatten().unwrap_or(i as f64);
+                        if xh > xl {
+                            plot.x0 + (xv - xl) / (xh - xl) * plot.width()
+                        } else {
+                            plot.x0 + band * (i as f64 + 0.5)
+                        }
+                    }
+                    _ => plot.x0 + band * (i as f64 + 0.5),
+                };
+                pts.push(Point::new(x, to_v(v)));
+            }
+            if pts.is_empty() {
+                continue;
+            }
+            let mut p = BezPath::new();
+            for (k, q) in pts.iter().enumerate() {
+                if k == 0 {
+                    p.move_to(*q);
+                } else {
+                    p.line_to(*q);
+                }
+            }
+            ctx.set_transform(m);
+            if matches!(
+                c.kind,
+                ChartType::Area | ChartType::StackedArea | ChartType::FilledRadar
+            ) {
+                let mut a = p.clone();
+                if let (Some(l), Some(f)) = (pts.last(), pts.first()) {
+                    a.line_to((l.x, zero));
+                    a.line_to((f.x, zero));
+                    a.close_path();
+                }
+                ctx.set_paint(color(col, 0.85));
+                ctx.fill_path(&a);
+            } else if c.kind != ChartType::Scatter {
+                ctx.set_paint(color(col, 1.0));
+                ctx.set_stroke(
+                    kurbo::Stroke::new(2.25)
+                        .with_join(kurbo::Join::Round)
+                        .with_caps(kurbo::Cap::Round),
+                );
+                ctx.stroke_path(&p);
+            }
+            if matches!(
+                c.kind,
+                ChartType::LineMarkers | ChartType::Scatter | ChartType::Bubble
+            ) {
+                ctx.set_paint(color(col, 1.0));
+                for q in &pts {
+                    ctx.fill_path(&kurbo::Circle::new(*q, 3.5).to_path(0.1));
+                }
+            }
+        }
+    }
+    // Axis line.
+    let mut ax = BezPath::new();
+    if horiz {
+        ax.move_to((zero, plot.y0));
+        ax.line_to((zero, plot.y1));
+    } else {
+        ax.move_to((plot.x0, zero));
+        ax.line_to((plot.x1, zero));
+    }
+    ctx.set_transform(m);
+    ctx.set_paint(color(Rgba::rgb(0xBF, 0xBF, 0xBF), 1.0));
+    ctx.set_stroke(kurbo::Stroke::new(0.75));
+    ctx.stroke_path(&ax);
+}

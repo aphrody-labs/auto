@@ -18,4 +18,3 @@ auto-modele = { path = "../auto-modele" }
 auto-sheets = { path = "../auto-sheets" }
 serde.workspace = true
 serde_json.workspace = true
-wordcraft-doc.workspace = true

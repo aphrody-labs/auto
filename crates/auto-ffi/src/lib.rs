@@ -345,7 +345,7 @@ Ligne"
         assert_eq!(rapport["occurrences"], 1);
         assert!(!String::from_utf8_lossy(&appel("pdf_texte", caviarde).1).contains("exemple.fr"));
 
-        let p12 = include_bytes!("../../../vendor/bun-distribution/crates/pdfcraft-sign/tests/data/rsa-aes.p12");
+        let p12 = include_bytes!("../../../vendor/suite/crates/pdfcraft-sign/tests/data/rsa-aes.p12");
         let mut e = Vec::new();
         trame(&mut e, br#"{ "mot_de_passe": "test", "date": "D:20261023120000Z" }"#);
         trame(&mut e, p12);

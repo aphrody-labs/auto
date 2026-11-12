@@ -118,9 +118,9 @@ pub fn verifier_signatures(pdf: &[u8], confiance: &[u8]) -> R<Vec<Verification>>
 mod tests {
     use super::*;
 
-    const P12: &[u8] = include_bytes!("../../../vendor/bun-distribution/crates/pdfcraft-sign/tests/data/rsa-aes.p12");
-    const EC: &[u8] = include_bytes!("../../../vendor/bun-distribution/crates/pdfcraft-sign/tests/data/ec-p256.p12");
-    const CERT: &[u8] = include_bytes!("../../../vendor/bun-distribution/crates/pdfcraft-sign/tests/data/rsa.crt.pem");
+    const P12: &[u8] = include_bytes!("../../../vendor/suite/crates/pdfcraft-sign/tests/data/rsa-aes.p12");
+    const EC: &[u8] = include_bytes!("../../../vendor/suite/crates/pdfcraft-sign/tests/data/ec-p256.p12");
+    const CERT: &[u8] = include_bytes!("../../../vendor/suite/crates/pdfcraft-sign/tests/data/rsa.crt.pem");
 
     fn pdf() -> Vec<u8> {
         let d = crate::creer_docx(&crate::Nouveau { titre: "Contrat".into(), paragraphes: vec![] }).unwrap();

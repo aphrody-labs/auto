@@ -1,6 +1,6 @@
 # n8n
 
-Automatisation entre les services de la suite. Fork : `vendor/n8n` (aphrody-labs/n8n, branche `bun`).
+Automatisation entre les services de la suite.
 
 ## Démarrer
 
@@ -10,7 +10,7 @@ bun run n8n:provision auto_…      # credential « API auto » + workflows de i
 bun run e2e:n8n                   # bout en bout (API sur le port 3000, Postgres de l'API requis)
 ```
 
-Image : `n8nio/n8n:2.45.2`, même ligne de version que le fork, en attendant l'image construite depuis `vendor/n8n`.
+Image : `n8nio/n8n:2.45.2`.
 
 ## auto → n8n : événements
 

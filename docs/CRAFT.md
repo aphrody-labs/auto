@@ -17,7 +17,7 @@ Provenance : Gridcraft et PDFcraft viennent de la distribution canonique `2026-1
 Pour réimporter une distribution qualifiée, préparer un dossier contenant `grid/`, `word/`, `pdf/` et `sources.json`, puis exécuter :
 
 ```sh
-bun scripts/vendor-suite.ts --craft-web chemin/vers/distribution
+bun scripts/craft-web.ts chemin/vers/distribution
 ```
 
 Ne pas reformater le JavaScript généré ; les fichiers sont référencés par leur empreinte. Le bootstrap HTML est externalisé pour la CSP. Le pont vérifie exactement l’origine et la fenêtre émettrice. Les ressources publiques ne contiennent aucun document métier ; leur ouverture passe par l’API authentifiée.
@@ -26,7 +26,7 @@ Ne pas reformater le JavaScript généré ; les fichiers sont référencés par 
 
 Migration 024 : documents et révisions sous RLS par entreprise. Routes `/v1/atelier` : création/import, liste, consultation, archivage, téléchargement courant ou historique, sauvegarde optimiste, restauration, opérations natives et export Word en PDF. Les contrats figurent dans OpenAPI ; `@auto/client` expose les méthodes typées.
 
-`OperationAtelier`, partagé depuis `@auto/store`, décrit les modifications. Excel utilise `auto-sheets::modifier`, FFI `xlsx_modifier` et `modifierXlsx` : coordonnées à partir de 1, styles conservés, formules recalculées par `gridcraft-calc` du commit épinglé dans `vendor/suite.toml`. Word utilise `auto-fichiers::remplacer_docx`, FFI `docx_remplacer` et `remplacerDocx` : remplacements Unicode dans paragraphes, tableaux et parties liées, attributs conservés. PDF réutilise les opérations natives existantes. Reconstruire auto-ffi avant de déployer ces routes.
+`OperationAtelier`, partagé depuis `@auto/store`, décrit les modifications. Excel utilise `auto-sheets::modifier`, FFI `xlsx_modifier` et `modifierXlsx` : coordonnées à partir de 1, styles conservés, formules recalculées par `gridcraft-calc` vendorisé dans `vendor/suite`. Word utilise `auto-fichiers::remplacer_docx`, FFI `docx_remplacer` et `remplacerDocx` : remplacements Unicode dans paragraphes, tableaux et parties liées, attributs conservés. PDF réutilise les opérations natives existantes. Reconstruire auto-ffi avant de déployer ces routes.
 
 ## Vérifications
 

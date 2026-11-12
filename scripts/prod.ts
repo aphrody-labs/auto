@@ -1,13 +1,12 @@
-// Exploitation de la production (serveur OVH `vps`) par l'infra Bun OS : `aphrody-infra ssh` pour l'hôte et les
-// conteneurs, `aphrody-infra probe` pour la sonde publique, `aphrody-infra ovh` pour le domaine mail.
+// Exploitation de la production (fr1 aujourd'hui, usa après bascule) : `ay ssh` pour l'hôte et les conteneurs,
+// sonde publique par fetch.
 //   bun run prod etat       hôte, conteneurs auto-*, santé publique
-//   bun run prod courriel   délivrabilité de aphrody.com (MX, SPF, DKIM, DMARC)
 //   bun run prod deployer   image construite ici, chargée sur le serveur, API, worker et web relancés
 import { $ } from "bun";
 import { empreinteFichiers } from "./empreinte";
 
 const URL_PUBLIQUE = "https://auto.aphrody.com";
-const HOTE = "vps";
+const HOTE = Bun.env.AUTO_HOTE ?? "fr1";
 
 /** Conteneurs applicatifs : même image, commande et options propres (le worker n'expose pas de port). */
 const CONTENEURS = [
@@ -30,22 +29,23 @@ const CONTENEURS = [
   },
 ];
 
-const distant = (commande: string) =>
-  $`aphrody-infra ssh exec --host ${HOTE} --cmd ${commande}`.env({
-    ...Bun.env,
-    APHRODY_SSH_COMMAND_TIMEOUT_SECS: "300",
-  });
+const distant = (commande: string) => $`ay ssh exec ${HOTE} -- ${commande}`;
+
+async function sonde() {
+  const r = await fetch(`${URL_PUBLIQUE}/health`, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  return r?.ok === true;
+}
 
 async function etat() {
-  await $`aphrody-infra ssh status --host ${HOTE}`;
+  await $`ay ssh check ${HOTE}`;
   await distant(`docker ps --filter name=auto- --format '{{.Names}}\t{{.Status}}\t{{.Image}}'`);
-  await $`aphrody-infra probe ${URL_PUBLIQUE}/health --timeout 10`;
+  console.log(`${URL_PUBLIQUE}/health : ${(await sonde()) ? "ok" : "KO"}`);
 }
 
 /** Empreinte de ce qui compose la bibliothèque native (crates, verrou Cargo, suite vendorisée épinglée). */
 async function empreinteNatif() {
   const suivis =
-    await $`git ls-files --cached --others --exclude-standard -- Cargo.toml Cargo.lock crates vendor/suite.toml scripts/vendor-suite.ts docker/app.Dockerfile .dockerignore`.text();
+    await $`git ls-files --cached --others --exclude-standard -- Cargo.toml Cargo.lock crates vendor/suite docker/app.Dockerfile .dockerignore`.text();
   return (await empreinteFichiers(suivis.trim().split(/\r?\n/).filter(Boolean))).slice(0, 16);
 }
 
@@ -54,7 +54,6 @@ async function empreinteNatif() {
  * marquée `auto-app:base` sur le serveur. Lente (lien montant faible) : seulement quand le natif change.
  */
 async function deployerComplet(natif: string) {
-  await $`bun run vendor`.quiet();
   await $`docker build -q -f docker/app.Dockerfile -t auto-app:dev .`;
   const archive = ".cache/auto-app.tar.gz";
   await $`mkdir -p .cache && docker save auto-app:dev | gzip -1 > ${archive}`;
@@ -100,8 +99,7 @@ async function deployer() {
   ).join(" && ");
   await distant(`cd ~/auto && ${relance}`);
   for (let i = 0; i < 12; i++) {
-    const r = await $`aphrody-infra probe ${URL_PUBLIQUE}/health --timeout 10`.nothrow().quiet();
-    if (r.exitCode === 0) return etat();
+    if (await sonde()) return etat();
     await Bun.sleep(5000);
   }
   throw new Error(`${URL_PUBLIQUE}/health ne répond pas après le déploiement`);
@@ -109,7 +107,6 @@ async function deployer() {
 
 const actions: Record<string, () => Promise<unknown>> = {
   etat,
-  courriel: () => $`aphrody-infra ovh email audit aphrody.com --profile aphrody.com`,
   deployer,
 };
 const action = actions[Bun.argv[2] ?? "etat"];

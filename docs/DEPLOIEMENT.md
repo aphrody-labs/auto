@@ -9,7 +9,6 @@
    par défaut `bun-v1.4.5`) et vérifié par `SHA256SUMS.txt`, dépendances de production, `libauto_ffi.so`.
 
 ```sh
-bun run vendor                       # clone partiel de la suite (requis par l'étape natif)
 docker build -f docker/app.Dockerfile -t auto-app .
 ```
 
@@ -78,12 +77,11 @@ Secrets sur le serveur, dans `~/auto` (mode 700) : `prod.env` (lu par les conten
 dans les secrets GitHub `NEON_DATABASE_URL` et `NEON_DATABASE_URL_DIRECT` (dépôt `aphrody-labs/auto`). Copie de `prod.env` chez l'opérateur, hors du serveur : `~/.auto/prod-vps.env` (la clé
 maître est indispensable pour déchiffrer les sauvegardes).
 
-Exploitation par l'infra Bun OS (`aphrody-infra ssh`, `probe`, `ovh`) :
+Exploitation par `ay ssh` (hôte `AUTO_HOTE`, défaut `fr1`) :
 
 ```sh
 bun run prod etat       # hôte, conteneurs auto-*, sonde publique
 bun run prod deployer   # voie rapide (sources TS, image reconstruite sur vps) ou complète si le natif change
-bun run prod courriel   # délivrabilité de aphrody.com (MX, SPF, DKIM, DMARC)
 ```
 
 Le worker n'expose pas de port : il tourne avec `--no-healthcheck` (voir `scripts/prod.ts`).

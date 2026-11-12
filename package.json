@@ -20,7 +20,7 @@
     "e2e:n8n": "bun apps/api/e2e/n8n.ts",
     "gates": "bun run build:native && bun check && bun lint apps packages scripts && bun fmt --check apps packages scripts docs && bun test --timeout 30000",
     "gates:rust": "bun scripts/cargo.ts fmt -- --check && bun scripts/cargo.ts clippy --workspace --all-targets --locked -- -D warnings && bun scripts/cargo.ts test --workspace --locked",
-    "vendor": "bun scripts/vendor-suite.ts",
+    "craft:web": "bun scripts/craft-web.ts",
     "validate:facturx": "bun scripts/validate-facturx.ts",
     "build:native": "bun scripts/build-native.ts",
     "build:desktop": "bun scripts/build-desktop.ts",

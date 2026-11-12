@@ -1,0 +1,25 @@
+[package]
+name = "wordcraft-fonts"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+description = "WordCraft fonts: font database (bundled OFL + system), metrics, glyph outlines, shaping"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[dependencies]
+kurbo = { version = "0.13", features = ["serde"] }
+skrifa = "0.47"
+harfrust = "0.13"
+wuff = "0.2.9"
+unicode-bidi = "0.3"
+unicode-script = "0.5"
+log = "0.4"

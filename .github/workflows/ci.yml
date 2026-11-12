@@ -27,15 +27,13 @@ jobs:
       - uses: aphrody-labs/bun/.github/actions/setup-bun@836a27a304c16d4b4330d03282baa1315f17b048 # main 2026-10-22
         with:
           bun-version: 1.4.6
-      - name: Suite Aphrody (clone partiel épinglé)
-        run: bun scripts/vendor-suite.ts
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'vendor/suite.toml') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
       - run: rustup component add clippy rustfmt
       - run: cargo fmt -- --check

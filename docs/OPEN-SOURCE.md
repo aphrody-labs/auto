@@ -46,7 +46,7 @@ Paquets Aphrody : `@aphrody/bun-types`, `@aphrody/m3-react`, `@aphrody/m3-tokens
 
 ## Crates Craft et Aphrody
 
-Suite `bun-distribution` épinglée (`vendor/suite.toml`), liée par FFI (`crates/auto-ffi`) :
+Suite Aphrody vendorisée (`vendor/suite`), liée par FFI (`crates/auto-ffi`) :
 
 - PDF : `pdfcraft-create`, `-organize`, `-render`, `-redact`, `-sign`, `-annot`, `-preflight` (fusion, pages, texte,
   caviardage, signature et vérification) ;

@@ -35,8 +35,8 @@ API lues dans les sources du commit épinglé (2026-10-23) :
 | Présentation        | `deckcraft_model::defaults::{new_presentation, new_slide, layout_of_kind}`, `deckcraft_pptx::export`/`import`, `deckcraft_pdf::export(&p, &PdfOptions)`        |
 
 `pdfcraft-render` s'appuie sur les copies corrigées de hayro, hayro-interpret, hayro-syntax, hayro-jbig2 et lopdf
-(`apps/pdfcraft/vendor`, API absentes de crates.io) : elles sont vendorisées (`extra` de `vendor/suite.toml`) et
-substituées par `[patch.crates-io]` dans le `Cargo.toml` racine, comme dans bun-distribution.
+(`apps/pdfcraft/vendor`, API absentes de crates.io), renommées `aphrody-hayro*` et `aphrody-lopdf` : elles sont
+vendorisées dans `vendor/suite/apps/pdfcraft/vendor` et référencées directement en `path`.
 
 Taille de la bibliothèque native (release, strip) : Linux 4,41 Mo → 24,27 Mo, Windows (MinGW) 12,50 Mo → 39,48 Mo.
 Sans `wordcraft-pdf` (mesuré) : Linux 12,90 Mo ; l'export DOCX → PDF (mise en page, krilla, codecs d'image, polices
@@ -96,6 +96,6 @@ dépendances non optionnelles de la crate).
 
 ## Consommation par le workspace Cargo
 
-Une dépendance git Cargo sur `bun-distribution` clonerait ses 168 sous-modules (noyaux Linux, etc.). Les crates sont donc pris dans un clone partiel épinglé : `vendor/suite.toml` (commit + crates racines), `bun run vendor` calcule la fermeture des dépendances `path` et fait un checkout sparse sans sous-modules ni `Cargo.toml` racine. Le workspace référence ces crates en `path`.
+Le dépôt amont `bun-distribution` n'existe plus. Les crates racines et la fermeture de leurs dépendances `path` sont versionnés dans `vendor/suite` (hors workspace, sans héritage `workspace = true`). Le workspace référence ces crates en `path`.
 
 Le Rust se compile et se teste dans un conteneur Linux (`scripts/cargo.sh`, image `docker/rust.Dockerfile`) : c'est la cible de production, et la chaîne MSVC locale est incomplète.

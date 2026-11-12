@@ -1,0 +1,32 @@
+[package]
+name = "pdfcraft-redact"
+description = "Redaction (architecture §11.2): marks, apply (glyphs, images, vectors, XObjects, annotations, fields), verification"
+version = "0.7.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+# `"*"` matches every non-workspace package: crates.io dependencies and the
+# vendored crates under `vendor/` (excluded from the workspace). Our own crates
+# keep full debug info. Dependencies keep only line tables, so backtraces still
+# show file and line, but debug info for the whole dependency graph stays out of
+# every test binary (each UI test binary had a 500-600 MB PDB on Windows, #454).
+
+[dependencies]
+pdfcraft-cos = { path = "../pdfcraft-cos", version = "0.7.1" }
+pdfcraft-content = { path = "../pdfcraft-content", version = "0.7.1" }
+pdfcraft-fonts = { path = "../pdfcraft-fonts", version = "0.7.1" }
+pdfcraft-model = { path = "../pdfcraft-model", version = "0.7.1" }
+pdfcraft-forms = { package = "aphrody-pdfcraft-forms", path = "../pdfcraft-forms", version = "0.7.1" }
+pdfcraft-edit = { path = "../pdfcraft-edit", version = "0.7.1" }
+pdfcraft-annot = { path = "../pdfcraft-annot", version = "0.7.1" }
+thiserror = "2"
+
+[dev-dependencies]

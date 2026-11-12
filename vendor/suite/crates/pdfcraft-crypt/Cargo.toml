@@ -1,0 +1,31 @@
+[package]
+name = "pdfcraft-crypt"
+description = "PDF standard security handler (ISO 32000-2 §7.6): RC4 and AES, revisions 2–6"
+version = "0.7.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+repository = "https://github.com/storytold/pdfcraft"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+# `"*"` matches every non-workspace package: crates.io dependencies and the
+# vendored crates under `vendor/` (excluded from the workspace). Our own crates
+# keep full debug info. Dependencies keep only line tables, so backtraces still
+# show file and line, but debug info for the whole dependency graph stays out of
+# every test binary (each UI test binary had a 500-600 MB PDB on Windows, #454).
+
+[dependencies]
+aes = "0.9"
+md-5 = "0.11"
+sha2 = "0.11"
+stringprep = "0.1"
+thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"

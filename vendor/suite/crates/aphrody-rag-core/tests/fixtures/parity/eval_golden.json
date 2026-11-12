@@ -1,0 +1,99 @@
+{
+  "normalizeUrl": {
+    "https://www.example.com/wiki/Freezer/": "/wiki/freezer",
+    "/wiki/Freezer/?x=1": "/wiki/freezer?x=1"
+  },
+  "matchesExpectedUrl": {
+    "freezer-futur_vs_freezer": false,
+    "freezer_vs_freezer": true
+  },
+  "cases": [
+    {
+      "q": "who is freezer",
+      "rank": 2,
+      "ndcg": 0.6309297535714575,
+      "mode": "lexical"
+    },
+    {
+      "q": "freezer forms",
+      "rank": 1,
+      "ndcg": 1,
+      "mode": "lexical"
+    },
+    {
+      "q": "zeni currency",
+      "rank": 1,
+      "ndcg": 1,
+      "mode": "lexical"
+    },
+    {
+      "q": "kamehameha",
+      "rank": 2,
+      "ndcg": 0.6309297535714575,
+      "mode": "lexical"
+    },
+    {
+      "q": "vegeta prince",
+      "rank": 0,
+      "ndcg": 0,
+      "mode": "lexical"
+    }
+  ],
+  "overall": {
+    "cases": 5,
+    "recall": {
+      "1": 0.4,
+      "3": 0.8,
+      "5": 0.8,
+      "10": 0.8
+    },
+    "mrr": 0.6,
+    "ndcg": 0.6523719014285831
+  },
+  "byTag": {
+    "character": {
+      "cases": 1,
+      "recall": {
+        "1": 0,
+        "3": 0,
+        "5": 0,
+        "10": 0
+      },
+      "mrr": 0,
+      "ndcg": 0
+    },
+    "saiyan": {
+      "cases": 1,
+      "recall": {
+        "1": 0,
+        "3": 0,
+        "5": 0,
+        "10": 0
+      },
+      "mrr": 0,
+      "ndcg": 0
+    },
+    "sans-tag": {
+      "cases": 3,
+      "recall": {
+        "1": 0.6666666666666666,
+        "3": 1,
+        "5": 1,
+        "10": 1
+      },
+      "mrr": 0.8333333333333334,
+      "ndcg": 0.8769765845238192
+    },
+    "technique": {
+      "cases": 1,
+      "recall": {
+        "1": 0,
+        "3": 1,
+        "5": 1,
+        "10": 1
+      },
+      "mrr": 0.5,
+      "ndcg": 0.6309297535714575
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[package]
+name = "deckcraft-model"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "DeckCraft document model: presentations, masters, layouts, slides, shapes, text, themes, transitions, animations"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+self_named_constructors = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+
+[dependencies]
+deckcraft-geom = { path = "../deckcraft-geom", version = "0.6.1" }
+deckcraft-color = { path = "../deckcraft-color", version = "0.6.1" }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+thiserror = "2"
+unicode-segmentation = "1"

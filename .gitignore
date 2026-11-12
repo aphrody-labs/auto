@@ -2,7 +2,6 @@ node_modules
 target
 data
 *.sqlite
-vendor/bun-distribution
 .cache
 dist
 # Python environment and caches for the local video voice tool.

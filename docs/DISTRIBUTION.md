@@ -4,7 +4,7 @@
 
 Le fichier `compose.yaml` reste réservé au développement : ses identifiants et ses réglages PostgreSQL sans fsync ne conviennent pas à la production.
 
-Pour une installation de production, copier `.env.production.example` vers `.env.production`, remplacer les secrets et renseigner l’URL publique. Préparer les dépendances Rust épinglées avec `bun run vendor`, puis lancer :
+Pour une installation de production, copier `.env.production.example` vers `.env.production`, remplacer les secrets et renseigner l’URL publique. Les dépendances Rust sont vendorisées dans `vendor/suite` ; lancer :
 
 ```sh
 docker compose --env-file .env.production -f compose.production.yaml up -d --build

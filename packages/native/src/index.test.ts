@@ -116,7 +116,7 @@ test("Word : gabarit, texte, PDF", () => {
 });
 
 const donneesSignature = (nom: string) =>
-  Bun.file(new URL(`../../../vendor/bun-distribution/crates/pdfcraft-sign/tests/data/${nom}`, import.meta.url));
+  Bun.file(new URL(`../../../vendor/suite/crates/pdfcraft-sign/tests/data/${nom}`, import.meta.url));
 
 test("PDF : caviardage définitif", () => {
   const pdf = docxEnPdf(

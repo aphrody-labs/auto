@@ -12,9 +12,9 @@
 | Pont natif       | `bun:ffi` vers `auto-ffi`                                                                                                 | `packages/native`, `crates/auto-ffi`                                                              |
 | Conformité       | XML CII EN 16931, PDF/A-3b, rendu PDF                                                                                     | `crates/auto-facturx`, `crates/auto-docs`, `crates/auto-modele`                                   |
 | Ingestion, agent | Factures reçues (Factur-X, OCR + LLM), CLI `auto agent` et `auto mcp` ([AGENT.md](AGENT.md))                              | `packages/ingest`, `packages/agent`, `apps/cli`, `apps/plugin`, `packages/services/src/ingest.ts` |
-| Automatisation   | n8n : workflows sur événements signés, rappels de l'API par jeton                                                         | `infra/n8n`, `apps/api/src/evenements.ts`, `vendor/n8n`                                           |
+| Automatisation   | n8n : workflows sur événements signés, rappels de l'API par jeton                                                         | `infra/n8n`, `apps/api/src/evenements.ts`                                                        |
 | PA               | Contrat `Plateforme`, adaptateurs `mock` et B2Brouter, chiffrement                                                        | `packages/pa`, `apps/api/src/modules/pa.ts`                                                       |
-| Suite Aphrody    | pdfcraft (cos, preflight, fonts, model, create)                                                                           | `vendor/bun-distribution` (clone partiel)                                                         |
+| Suite Aphrody    | pdfcraft (cos, preflight, fonts, model, create)                                                                           | `vendor/suite` (clone partiel)                                                         |
 
 Le TypeScript porte le SaaS (tenants, droits, état, API). Le Rust porte les formats et la conformité,
 sous forme de fonctions pures sans état ni notion de tenant.
@@ -92,10 +92,9 @@ désactive les tâches périodiques d'un worker (les autres continuent de consom
 
 ## Décisions
 
-- **Suite Aphrody en clone partiel.** Une dépendance git Cargo sur `bun-distribution` clonerait ses 168
-  sous-modules. `vendor/suite.toml` épingle un commit et des crates racines ; `bun run vendor` calcule la
-  fermeture des dépendances `path` et fait un checkout sparse. Un correctif de la suite se fait dans
-  `bun-distribution`, puis on met à jour le commit épinglé.
+- **Suite Aphrody vendorisée.** Le dépôt amont `bun-distribution` n'existe plus : les crates utilisés
+  (pdfcraft, gridcraft, wordcraft, deckcraft, aphrody-rag-core, hayro et lopdf corrigés) et leur fermeture
+  `path` sont versionnés dans `vendor/suite`, hors workspace. Un correctif se fait directement là.
 - **Rust en conteneur.** `scripts/cargo.sh` compile dans `docker/rust.Dockerfile` (Linux, cible de
   production). La bibliothèque Windows du poste de dev est obtenue par compilation croisée MinGW
   (`bun run build:native`), la chaîne MSVC locale étant incomplète.
@@ -104,8 +103,7 @@ désactive les tâches périodiques d'un worker (les autres continuent de consom
 - **Automatisation par n8n.** L'API publie `document.emis`, `document.statut`, `paiement.enregistre`,
   `absence.demandee` et `absence.decidee` dans la transaction (outbox), livrés par le worker en webhook
   HMAC-SHA256 (`x-auto-signature`). n8n rappelle l'API avec un jeton stocké chiffré dans ses credentials ; il n'a pas
-  accès à la base de l'API (base `n8n` séparée). Fork `aphrody-labs/n8n` (branche `bun` : bun install,
-  bun.lock, linker hoisted) ; en compose, image officielle de la même version en attendant celle du fork.
+  accès à la base de l'API (base `n8n` séparée). Image officielle `n8nio/n8n` en compose.
 - **Plateforme agréée (L6).** auto est une solution compatible : chaque tenant connecte une PA
   (`PUT /v1/pa`, avec le mandat), choisie parmi `mock` et `b2brouter` (choix et sources : `docs/PA.md`).
   Identifiants chiffrés en AES-256-GCM, clé HKDF-SHA256 de `AUTO_CLE_MAITRE` et du tenant (aussi donnée

@@ -30,7 +30,6 @@ services:
       | psql -h postgres -U auto -d auto -v ON_ERROR_STOP=1"
     restart: "no"
 
-  # Même ligne de version que le fork vendor/n8n (branche bun) ; l'image du fork remplacera celle-ci.
   n8n:
     image: n8nio/n8n:2.45.2
     depends_on:

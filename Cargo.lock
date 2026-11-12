@@ -53,8 +53,99 @@ dependencies = [
 ]
 
 [[package]]
+name = "aphrody-hayro"
+version = "0.7.1"
+dependencies = [
+ "aphrody-hayro-interpret",
+ "bytemuck",
+ "image",
+ "kurbo",
+ "log",
+ "pic-scale",
+ "vello_cpu 0.0.8",
+]
+
+[[package]]
+name = "aphrody-hayro-interpret"
+version = "0.7.0"
+dependencies = [
+ "aphrody-hayro-syntax",
+ "bitflags",
+ "hayro-cmap",
+ "kurbo",
+ "moxcms",
+ "phf",
+ "rustc-hash",
+ "siphasher",
+ "skrifa 0.47.0",
+ "smallvec",
+ "yoke",
+]
+
+[[package]]
+name = "aphrody-hayro-jbig2"
+version = "0.3.0"
+dependencies = [
+ "fearless_simd 0.4.1",
+ "hayro-ccitt 0.3.0",
+]
+
+[[package]]
+name = "aphrody-hayro-syntax"
+version = "0.7.2"
+dependencies = [
+ "aphrody-hayro-jbig2",
+ "flate2",
+ "hayro-ccitt 0.3.0",
+ "hayro-jpeg2000",
+ "memchr",
+ "rustc-hash",
+ "smallvec",
+ "stringprep",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "aphrody-lopdf"
+version = "0.45.0"
+dependencies = [
+ "aes",
+ "bitflags",
+ "brotli-decompressor",
+ "cbc",
+ "chrono",
+ "ecb",
+ "encoding_rs",
+ "flate2",
+ "getrandom 0.4.3",
+ "indexmap",
+ "itoa",
+ "log",
+ "md-5",
+ "nom",
+ "rand",
+ "rangemap",
+ "rayon",
+ "sha2",
+ "stringprep",
+ "thiserror",
+ "weezl 0.2.1",
+]
+
+[[package]]
+name = "aphrody-pdfcraft-forms"
+version = "0.7.1"
+dependencies = [
+ "pdfcraft-content",
+ "pdfcraft-cos",
+ "pdfcraft-fonts",
+ "pdfcraft-model",
+ "thiserror",
+]
+
+[[package]]
 name = "aphrody-rag-core"
-version = "1.4.4"
+version = "1.4.7"
 dependencies = [
  "blake3",
  "ndarray",
@@ -108,8 +199,6 @@ dependencies = [
  "pdfcraft-cos",
  "pdfcraft-create",
  "pdfcraft-preflight",
- "serde",
- "serde_json",
  "thiserror",
 ]
 
@@ -125,7 +214,6 @@ dependencies = [
  "auto-sheets",
  "serde",
  "serde_json",
- "wordcraft-doc",
 ]
 
 [[package]]
@@ -903,6 +991,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97b65636e5b9ef369943878ac74335ba1c55c1cb6adbf1e2c293c624248d693"
 
 [[package]]
+name = "fearless_simd"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "629c9d6b6f30b5604089e0980f4d924a013aacb1654a6cdf5d3d852224f68651"
+
+[[package]]
 name = "ff"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1210,23 +1304,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "hayro"
-version = "0.7.1"
-dependencies = [
- "bytemuck",
- "hayro-interpret",
- "image",
- "kurbo",
- "log",
- "pic-scale",
- "vello_cpu 0.0.8",
-]
-
-[[package]]
 name = "hayro-ccitt"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f4d0e94ddd48749f06bbe4e5389fb9799a0c45bcaf00495042076ef05e3241a"
+
+[[package]]
+name = "hayro-ccitt"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2866f0d976e76497480b853d5e258dab6e4b89ecfe991124e08f15dfa8fd03ad"
 
 [[package]]
 name = "hayro-cmap"
@@ -1239,28 +1326,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "hayro-interpret"
-version = "0.7.0"
-dependencies = [
- "bitflags",
- "hayro-cmap",
- "hayro-syntax",
- "kurbo",
- "moxcms",
- "phf",
- "rustc-hash",
- "siphasher",
- "skrifa 0.47.0",
- "smallvec",
- "yoke",
-]
-
-[[package]]
 name = "hayro-jbig2"
-version = "0.3.0"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "000e025850f4592ddcaee85640db70704151f2bafd43b6f431aa5b6a2c6a35a9"
 dependencies = [
- "fearless_simd",
- "hayro-ccitt",
+ "fearless_simd 1.2.0",
+ "hayro-ccitt 0.4.0",
 ]
 
 [[package]]
@@ -1269,7 +1341,7 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c75ab947623ef4ccaa7acf0579edf7cbb5a73838e3839a7be73335e522f433a1"
 dependencies = [
- "fearless_simd",
+ "fearless_simd 0.4.1",
 ]
 
 [[package]]
@@ -1281,15 +1353,15 @@ checksum = "885c5ef0654933139a9b9546fc2c69e18d37f38aa2520f079092b1be18f1fcaa"
 [[package]]
 name = "hayro-syntax"
 version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0edeafd70aa2db743de8ede8637d07ec87db05efe69cde371d03f1b185fcef27"
 dependencies = [
  "flate2",
- "hayro-ccitt",
  "hayro-jbig2",
  "hayro-jpeg2000",
  "memchr",
  "rustc-hash",
  "smallvec",
- "stringprep",
  "zune-jpeg",
 ]
 
@@ -1505,33 +1577,6 @@ name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
-
-[[package]]
-name = "lopdf"
-version = "0.45.0"
-dependencies = [
- "aes",
- "bitflags",
- "brotli-decompressor",
- "cbc",
- "chrono",
- "ecb",
- "encoding_rs",
- "flate2",
- "getrandom 0.4.3",
- "indexmap",
- "itoa",
- "log",
- "md-5",
- "nom",
- "rand",
- "rangemap",
- "rayon",
- "sha2",
- "stringprep",
- "thiserror",
- "weezl 0.2.1",
-]
 
 [[package]]
 name = "matrixmultiply"
@@ -1809,17 +1854,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pdfcraft-forms"
-version = "0.7.1"
-dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
- "pdfcraft-model",
- "thiserror",
-]
-
-[[package]]
 name = "pdfcraft-model"
 version = "0.7.1"
 dependencies = [
@@ -1847,12 +1881,12 @@ dependencies = [
 name = "pdfcraft-redact"
 version = "0.7.1"
 dependencies = [
+ "aphrody-pdfcraft-forms",
  "pdfcraft-annot",
  "pdfcraft-content",
  "pdfcraft-cos",
  "pdfcraft-edit",
  "pdfcraft-fonts",
- "pdfcraft-forms",
  "pdfcraft-model",
  "thiserror",
 ]
@@ -1861,13 +1895,13 @@ dependencies = [
 name = "pdfcraft-render"
 version = "0.7.1"
 dependencies = [
+ "aphrody-hayro",
+ "aphrody-hayro-syntax",
+ "aphrody-lopdf",
  "bytemuck",
  "getrandom 0.4.3",
- "hayro",
- "hayro-syntax",
  "kurbo",
  "log",
- "lopdf",
  "pdfcraft-cos",
  "pdfcraft-fonts",
  "serde",
@@ -2866,7 +2900,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3361bff7f7d82c0c496b92048db83846691f0e844cc28dee92b1c824291b55ee"
 dependencies = [
  "bytemuck",
- "fearless_simd",
+ "fearless_simd 0.4.1",
  "guillotiere",
  "hashbrown",
  "log",
@@ -2883,7 +2917,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19d672facaa2d697285a786cd9d44d614cd2ce54cdc022504bf339f8fff3b750"
 dependencies = [
  "bytemuck",
- "fearless_simd",
+ "fearless_simd 0.4.1",
  "guillotiere",
  "hashbrown",
  "log",
@@ -2900,7 +2934,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbb2141a2bca6e6d598e471fd4d1d7eed8e020aad6a28187edda07f091a325dd"
 dependencies = [
  "bytemuck",
- "fearless_simd",
+ "fearless_simd 0.4.1",
  "guillotiere",
  "log",
  "peniko",

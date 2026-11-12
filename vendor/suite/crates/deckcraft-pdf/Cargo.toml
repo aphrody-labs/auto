@@ -1,0 +1,29 @@
+[package]
+name = "deckcraft-pdf"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "DeckCraft PDF export (krilla): slides, notes pages and handouts with a selectable text layer, links and bookmarks"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+self_named_constructors = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+
+[dependencies]
+deckcraft-model = { path = "../deckcraft-model", version = "0.6.1" }
+deckcraft-fonts = { path = "../deckcraft-fonts", version = "0.6.1" }
+deckcraft-text = { path = "../deckcraft-text", version = "0.6.1" }
+deckcraft-render = { path = "../deckcraft-render", version = "0.6.1" }
+krilla = { version = "0.8", features = ["pdf"] }
+kurbo = { version = "0.13", features = ["serde"] }
+serde = { version = "1", features = ["derive", "rc"] }
+thiserror = "2"
+log = "0.4"

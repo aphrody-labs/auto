@@ -1,0 +1,23 @@
+[package]
+name = "wordcraft-proof"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+description = "WordCraft proofing per language: spelling, suggestions, grammar checks and hyphenation for English (public-domain word list) and Polish (installed Hunspell dictionary, TeX patterns)"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[dependencies]
+log = "0.4"
+miniz_oxide = "0.8"
+
+[dev-dependencies]
+proptest = "1"

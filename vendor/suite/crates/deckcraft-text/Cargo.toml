@@ -1,0 +1,31 @@
+[package]
+name = "deckcraft-text"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "DeckCraft text layout: runs to shaped glyph lines with bullets, indents, spacing, alignment, anchoring, autofit and caret hit testing"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+self_named_constructors = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+
+[dependencies]
+chrono = "0.4"
+deckcraft-model = { path = "../deckcraft-model", version = "0.6.1" }
+deckcraft-geom = { path = "../deckcraft-geom", version = "0.6.1" }
+deckcraft-color = { path = "../deckcraft-color", version = "0.6.1" }
+deckcraft-fonts = { path = "../deckcraft-fonts", version = "0.6.1" }
+unicode-linebreak = "0.1"
+unicode-segmentation = "1"
+unicode-bidi = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+chrono = { version = "0.4.45", default-features = false }

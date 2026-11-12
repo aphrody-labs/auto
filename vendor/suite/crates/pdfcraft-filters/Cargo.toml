@@ -1,0 +1,29 @@
+[package]
+name = "pdfcraft-filters"
+description = "PDF stream filters (ISO 32000-2 §7.4): Flate, LZW, predictors, ASCII85, ASCIIHex, RunLength"
+version = "0.7.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+repository = "https://github.com/storytold/pdfcraft"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+# `"*"` matches every non-workspace package: crates.io dependencies and the
+# vendored crates under `vendor/` (excluded from the workspace). Our own crates
+# keep full debug info. Dependencies keep only line tables, so backtraces still
+# show file and line, but debug info for the whole dependency graph stays out of
+# every test binary (each UI test binary had a 500-600 MB PDB on Windows, #454).
+
+[dependencies]
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"
+weezl = "0.2"

@@ -1,11 +1,11 @@
 # Image de production de l'API et du worker : bibliothèque auto-ffi compilée pour Linux, puis runtime Aphrody.
-# Contexte : racine du dépôt, après `bun run vendor` (clone partiel de la suite dans vendor/bun-distribution).
+# Contexte : racine du dépôt ; la suite Rust est vendorisée dans vendor/suite.
 
 FROM rust:1.99 AS natif
 WORKDIR /w
 COPY Cargo.toml Cargo.lock rustfmt.toml ./
 COPY crates crates
-COPY vendor/bun-distribution vendor/bun-distribution
+COPY vendor/suite vendor/suite
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/w/target,sharing=locked \

@@ -1,0 +1,19 @@
+{
+  "maxChunkChars": 220,
+  "overlapPct": 0.15,
+  "doc": "# Install\n\nThis is the first sentence of the install section. This is the second sentence, a bit longer to pad it out. This is the third sentence which continues padding. This is the fourth sentence adding even more length here. This is the fifth sentence, still going strong with more words. This is the sixth sentence to push us well past a small max length. This is the seventh sentence for good measure and overlap testing purposes.\n\n## Linux\n\nLinux specific instructions go here in a single short paragraph.\n",
+  "chunks": [
+    {
+      "content": "[Install] This is the first sentence of the install section. This is the second sentence, a bit longer to pad it out. This is the third sentence which continues padding. This is the fourth sentence adding even more length here.",
+      "section": "Install"
+    },
+    {
+      "content": "[Install] This is the fifth sentence, still going strong with more words. This is the sixth sentence to push us well past a small max length. This is the seventh sentence for good measure and overlap testing purposes.",
+      "section": "Install"
+    },
+    {
+      "content": "[Install > Linux] Linux specific instructions go here in a single short paragraph.",
+      "section": "Install > Linux"
+    }
+  ]
+}

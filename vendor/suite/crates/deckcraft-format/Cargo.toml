@@ -1,0 +1,25 @@
+[package]
+name = "deckcraft-format"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "DeckCraft native file format (.deckcraft: zip of a JSON manifest plus media) and outline text import/export"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+self_named_constructors = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+
+[dependencies]
+deckcraft-model = { path = "../deckcraft-model", version = "0.6.1" }
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+thiserror = "2"

@@ -1,0 +1,28 @@
+[package]
+name = "pdfcraft-organize"
+description = "Page and document-structure edits: rotate, delete, move, insert pages; document info"
+version = "0.7.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+# `"*"` matches every non-workspace package: crates.io dependencies and the
+# vendored crates under `vendor/` (excluded from the workspace). Our own crates
+# keep full debug info. Dependencies keep only line tables, so backtraces still
+# show file and line, but debug info for the whole dependency graph stays out of
+# every test binary (each UI test binary had a 500-600 MB PDB on Windows, #454).
+
+[dependencies]
+pdfcraft-content = { path = "../pdfcraft-content", version = "0.7.1" }
+pdfcraft-cos = { path = "../pdfcraft-cos", version = "0.7.1" }
+thiserror = "2"
+
+[dev-dependencies]
+hayro-syntax = { package = "aphrody-hayro-syntax", path = "../../apps/pdfcraft/vendor/hayro-syntax", version = "0.7.2" }

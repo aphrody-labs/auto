@@ -1,0 +1,26 @@
+[package]
+name = "deckcraft-fonts"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "DeckCraft fonts: font database (craft-fonts + system), substitutes for Office fonts, metrics, outlines, shaping"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+self_named_constructors = "allow"
+large_enum_variant = "allow"
+result_large_err = "allow"
+
+[dependencies]
+kurbo = { version = "0.13", features = ["serde"] }
+skrifa = "0.47"
+harfrust = "0.13"
+unicode-bidi = "0.3"
+log = "0.4"
+epaint_default_fonts = "0.36"

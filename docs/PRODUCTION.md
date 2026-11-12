@@ -154,7 +154,7 @@ La sauvegarde manuelle après correction a réussi et la copie hors site contien
 
 ### Accès OVH et limite du compte de service
 
-L'outil `aphrody-infra ovh` fonctionne avec `--profile aphrody.com` : audit MX/SPF/DMARC/DKIM valide.
+L'ancien outil `aphrody-infra ovh` (retiré, sans équivalent `ay`) faisait l'audit MX/SPF/DMARC/DKIM avec `--profile aphrody.com`.
 Le compte de service du profil et celui du coffre DPAPI s'authentifient sur `eu8427-ovh`, mais la liste
 Zimbra renvoie `[]` et la lecture de la plateforme connue reçoit 404. Le catalogue IAM ne liste aucun
 type Zimbra ; la clé applicative historique reçoit 403. Une liste vide ne permet donc pas de conclure

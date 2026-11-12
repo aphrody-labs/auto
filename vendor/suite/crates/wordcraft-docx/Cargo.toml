@@ -1,0 +1,40 @@
+[package]
+name = "wordcraft-docx"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+description = "WordCraft DOCX (OOXML WordprocessingML) reader and writer"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[dependencies]
+wordcraft-doc = { path = "../wordcraft-doc", version = "0.6.1" }
+wordcraft-geom = { path = "../wordcraft-geom", version = "0.6.1" }
+quick-xml = "0.41"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+thiserror = "2"
+log = "0.4"
+cfb = "0.15"
+aes = "0.9"
+sha1 = "0.11"
+sha2 = "0.11"
+hmac = "0.13"
+base64 = "0.22"
+getrandom = { version = "0.4.3", default-features = false }
+zeroize = "1"
+
+[dev-dependencies]
+proptest = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4.3", default-features = false, features = ["wasm_js"] }

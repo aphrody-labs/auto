@@ -1,0 +1,24 @@
+[package]
+name = "gridcraft-calc"
+version = "0.6.1"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/bun-os"
+description = "GridCraft calculation engine: dependency graph, recalculation, evaluator, dynamic arrays"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[dependencies]
+gridcraft-core = { path = "../gridcraft-core", version = "0.6.1" }
+gridcraft-formula = { path = "../gridcraft-formula", version = "0.6.1" }
+gridcraft-functions = { path = "../gridcraft-functions", version = "0.6.1" }
+gridcraft-numfmt = { path = "../gridcraft-numfmt", version = "0.6.1" }
+gridcraft-model = { path = "../gridcraft-model", version = "0.6.1" }
+log = "0.4"

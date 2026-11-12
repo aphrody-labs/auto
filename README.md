@@ -82,7 +82,6 @@ exécutable avec runtime embarqué, sans réimplémenter leur logique.
 ```sh
 docker compose up -d postgres   # Postgres 18 sur le port 5433
 bun install
-bun run vendor         # crates de la suite Aphrody (clone partiel épinglé)
 bun run build:native   # bibliothèque auto-ffi (Docker), requise par l'API
 bun run migrate
 bun run dev
