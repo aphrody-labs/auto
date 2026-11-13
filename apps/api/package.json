@@ -19,7 +19,7 @@
     "@auto/services": "workspace:*",
     "@auto/store": "workspace:*",
     "@auto/tenancy": "workspace:*",
-    "@better-auth/mcp": "1.7.16",
+    "@better-auth/mcp": "1.7.19",
     "zod": "^4"
   }
 }
