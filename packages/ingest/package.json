@@ -10,5 +10,6 @@
   "dependencies": {
     "@auto/domain": "workspace:*",
     "@auto/native": "workspace:*"
-  }
+  },
+  "private": true
 }

@@ -10,5 +10,6 @@
   "dependencies": {
     "@auto/domain": "workspace:*",
     "@auto/ingest": "workspace:*"
-  }
+  },
+  "private": true
 }

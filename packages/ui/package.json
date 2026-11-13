@@ -28,5 +28,6 @@
   "devDependencies": {
     "@material-symbols/svg-400": "0.48.1",
     "@types/react": "^19.3.0"
-  }
+  },
+  "private": true
 }

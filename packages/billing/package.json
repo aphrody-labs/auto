@@ -6,5 +6,6 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@auto/store": "workspace:*"
-  }
+  },
+  "private": true
 }

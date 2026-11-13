@@ -11,5 +11,6 @@
     "@auto/automate": "workspace:*",
     "@auto/domain": "workspace:*",
     "@auto/store": "workspace:*"
-  }
+  },
+  "private": true
 }

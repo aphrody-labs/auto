@@ -17,5 +17,6 @@
   },
   "devDependencies": {
     "@auto/api": "workspace:*"
-  }
+  },
+  "private": true
 }

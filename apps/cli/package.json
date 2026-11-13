@@ -16,5 +16,6 @@
   "devDependencies": {
     "@auto/api": "workspace:*",
     "@auto/store": "workspace:*"
-  }
+  },
+  "private": true
 }

@@ -20,5 +20,6 @@
     "@auto/tenancy": "workspace:*",
     "@better-auth/mcp": "1.7.16",
     "zod": "^4"
-  }
+  },
+  "private": true
 }

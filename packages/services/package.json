@@ -18,5 +18,6 @@
     "@auto/store": "workspace:*",
     "@auto/tenancy": "workspace:*",
     "quickjs-emscripten": "^0.32.0"
-  }
+  },
+  "private": true
 }
