@@ -1,6 +1,7 @@
 {
   "name": "@auto/agent",
   "version": "0.1.0",
+  "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -13,6 +14,5 @@
   "devDependencies": {
     "@auto/api": "workspace:*",
     "@auto/store": "workspace:*"
-  },
-  "private": true
+  }
 }

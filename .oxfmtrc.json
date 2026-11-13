@@ -1,4 +1,12 @@
 {
   "printWidth": 120,
-  "ignorePatterns": ["vendor/**", "target/**", "data/**", ".cache/**", "packages/ui/src/tokens.css", ".claude/**", "apps/web/public/craft/**"]
+  "ignorePatterns": [
+    "vendor/**",
+    "target/**",
+    "data/**",
+    ".cache/**",
+    "packages/ui/src/tokens.css",
+    ".claude/**",
+    "apps/web/public/craft/**"
+  ]
 }

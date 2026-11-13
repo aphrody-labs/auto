@@ -3,7 +3,7 @@
 Évaluation du 2026-11-12, sans réécriture. Surfaces actuelles : `apps/web` (React, Tailwind 4, Material 3, servi par
 `Bun.serve`), `apps/desktop` (Tauri, WebView), `apps/extension` (Chrome MV3), build Android par Tauri. Étoiles et
 dernier push relevés sur l'API GitHub le jour même ; miroirs locaux : `third_party/dioxus`,
-`third_party/dioxus-labs/{blitz,parley,vello}`, `third_party/longbridge/gpui-component`.
+`third_party/dioxus-labs/{blitz,parley,vello}`, `third_party/gpui-component`.
 
 ## Couverture et maturité
 

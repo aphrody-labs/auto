@@ -1,6 +1,7 @@
 {
   "name": "@auto/client",
   "version": "0.0.0",
+  "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -11,6 +12,5 @@
     "@auto/automate": "workspace:*",
     "@auto/domain": "workspace:*",
     "@auto/store": "workspace:*"
-  },
-  "private": true
+  }
 }

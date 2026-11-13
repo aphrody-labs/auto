@@ -1,6 +1,7 @@
 {
   "name": "@auto/store",
   "version": "0.0.0",
+  "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": "./src/index.ts",
@@ -10,6 +11,5 @@
   "dependencies": {
     "@auto/domain": "workspace:*",
     "@auto/ingest": "workspace:*"
-  },
-  "private": true
+  }
 }

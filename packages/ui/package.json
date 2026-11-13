@@ -1,6 +1,7 @@
 {
   "name": "@auto/ui",
   "version": "0.0.0",
+  "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -28,6 +29,5 @@
   "devDependencies": {
     "@material-symbols/svg-400": "0.48.1",
     "@types/react": "^19.3.0"
-  },
-  "private": true
+  }
 }

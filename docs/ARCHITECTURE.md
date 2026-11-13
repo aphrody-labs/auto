@@ -12,9 +12,9 @@
 | Pont natif       | `bun:ffi` vers `auto-ffi`                                                                                                 | `packages/native`, `crates/auto-ffi`                                                              |
 | Conformité       | XML CII EN 16931, PDF/A-3b, rendu PDF                                                                                     | `crates/auto-facturx`, `crates/auto-docs`, `crates/auto-modele`                                   |
 | Ingestion, agent | Factures reçues (Factur-X, OCR + LLM), CLI `auto agent` et `auto mcp` ([AGENT.md](AGENT.md))                              | `packages/ingest`, `packages/agent`, `apps/cli`, `apps/plugin`, `packages/services/src/ingest.ts` |
-| Automatisation   | n8n : workflows sur événements signés, rappels de l'API par jeton                                                         | `infra/n8n`, `apps/api/src/evenements.ts`                                                        |
+| Automatisation   | n8n : workflows sur événements signés, rappels de l'API par jeton                                                         | `infra/n8n`, `apps/api/src/evenements.ts`                                                         |
 | PA               | Contrat `Plateforme`, adaptateurs `mock` et B2Brouter, chiffrement                                                        | `packages/pa`, `apps/api/src/modules/pa.ts`                                                       |
-| Suite Aphrody    | pdfcraft (cos, preflight, fonts, model, create)                                                                           | `vendor/suite` (clone partiel)                                                         |
+| Suite Aphrody    | pdfcraft (cos, preflight, fonts, model, create)                                                                           | `vendor/suite` (clone partiel)                                                                    |
 
 Le TypeScript porte le SaaS (tenants, droits, état, API). Le Rust porte les formats et la conformité,
 sous forme de fonctions pures sans état ni notion de tenant.

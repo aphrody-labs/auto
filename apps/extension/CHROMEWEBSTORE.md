@@ -42,13 +42,13 @@ Français
 
 ## Graphics & Assets
 
-| Asset            | Dimensions  | Status   | Filename                                                   |
-| ---------------- | ----------- | -------- | ---------------------------------------------------------- |
-| Store Icon       | 128×128 PNG |  Ready | `dist/icons/icon-128.png` (généré par `bun run build`)     |
-| Screenshot 1     | 1280×800    |  Ready | `store/capture-1.png` (généré par `bun run captures`)      |
-| Screenshot 2     | 1280×800    |  Ready | `store/capture-2.png`                                      |
-| Screenshot 3     | 1280×800    |  Ready | `store/capture-3.png` (test `apps/web/e2e/recues.test.ts`) |
-| Small Promo Tile | 440×280     |  Ready | `store/promo-440x280.png`                                  |
+| Asset            | Dimensions  | Status | Filename                                                   |
+| ---------------- | ----------- | ------ | ---------------------------------------------------------- |
+| Store Icon       | 128×128 PNG | Ready  | `dist/icons/icon-128.png` (généré par `bun run build`)     |
+| Screenshot 1     | 1280×800    | Ready  | `store/capture-1.png` (généré par `bun run captures`)      |
+| Screenshot 2     | 1280×800    | Ready  | `store/capture-2.png`                                      |
+| Screenshot 3     | 1280×800    | Ready  | `store/capture-3.png` (test `apps/web/e2e/recues.test.ts`) |
+| Small Promo Tile | 440×280     | Ready  | `store/promo-440x280.png`                                  |
 
 ### Screenshot Notes
 

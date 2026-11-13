@@ -1,6 +1,7 @@
 {
   "name": "@auto/automate",
   "version": "0.0.0",
+  "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -9,6 +10,5 @@
   },
   "dependencies": {
     "zod": "^4"
-  },
-  "private": true
+  }
 }
