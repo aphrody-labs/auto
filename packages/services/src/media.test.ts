@@ -54,7 +54,7 @@ test("Bun.Image : redimensionner et convertir", async () => {
   expect(m).toMatchObject({ width: 320, format: "jpeg" });
 });
 
-test.skipIf(!Bun.Video.available || !(await Bun.file(VIDEO).exists()))(
+test.skipIf(!Bun.Video?.available || !(await Bun.file(VIDEO).exists()))(
   "Bun.Video : métadonnées, image extraite et GIF",
   async () => {
     const octets = await Bun.file(VIDEO).bytes();
