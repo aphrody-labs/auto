@@ -4,6 +4,8 @@ import type { BunPlugin } from "bun";
 const moduleTailwind = "@aphrody/bun-plugin-tailwind";
 const { tailwind } = (await import(moduleTailwind)) as { tailwind: () => BunPlugin };
 
+const { greffonPolices } = await import("../apps/web/src/polices.ts");
+
 const cible = Bun.argv[2] ?? (process.platform === "win32" ? "windows-x64" : "linux-x64");
 if (!["windows-x64", "linux-x64"].includes(cible)) throw new Error("Cible : windows-x64 ou linux-x64");
 const dossier = `dist/standalone/${cible}`;
@@ -14,15 +16,22 @@ if (!(await Bun.file(sourceNative).exists())) throw new Error(`Construire d’ab
 const plateformeHote = process.platform === "win32" ? "windows-x64" : process.platform === "linux" ? "linux-x64" : null;
 if (cible !== plateformeHote || process.arch !== "x64")
   throw new Error("Construire ce paquet sur sa plateforme cible pour qualifier le runtime embarqué et ses notices");
-const noticeRuntime = Bun.file(`licenses/bun/${Bun.revision.slice(0, 12)}/LICENSE.md`);
-if (!(await noticeRuntime.exists())) throw new Error(`Notice du runtime ${Bun.revision} non qualifiée`);
+// La notice est le LICENSE.md de la révision du runtime : copie versionnée si elle existe, sinon celle des sources
+// (un runtime du canal canary change de révision chaque jour).
+const noticeVersionnee = Bun.file(`licenses/bun/${Bun.revision.slice(0, 12)}/LICENSE.md`);
+const noticeRuntime = (await noticeVersionnee.exists())
+  ? await noticeVersionnee.text()
+  : await fetch(`https://raw.githubusercontent.com/aphrody-labs/bun/${Bun.revision}/LICENSE.md`).then((r) => {
+      if (!r.ok) throw new Error(`Notice du runtime ${Bun.revision} non qualifiée (HTTP ${r.status})`);
+      return r.text();
+    });
 
 const resultat = await Bun.build({
   entrypoints: ["apps/standalone/src/index.ts"],
   target: "bun",
   env: "disable",
   minify: true,
-  plugins: [tailwind()],
+  plugins: [tailwind(), greffonPolices],
   compile: { target: cible === "windows-x64" ? "bun-windows-x64" : "bun-linux-x64", outfile: executable },
 });
 if (!resultat.success) throw new AggregateError(resultat.logs, "Compilation autonome impossible");
