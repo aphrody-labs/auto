@@ -42,3 +42,14 @@ thiserror = "2"
 strip = true
 lto = "fat"
 codegen-units = 1
+
+[profile.dev]
+split-debuginfo = "unpacked"
+incremental = true
+codegen-units = 16
+debug = "limited"
+
+[profile.dev.build-override]
+codegen-units = 16
+split-debuginfo = "unpacked"
+debug = "limited"

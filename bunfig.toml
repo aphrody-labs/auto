@@ -6,3 +6,10 @@ pathIgnorePatterns = ["vendor/**", "target/**", ".claude/**"]
 [serve.static]
 # Polices Fontsource en fichiers WOFF2 à empreinte servis par /polices (apps/web/src/polices.ts), pas en base64 dans la CSS.
 plugins = ["@aphrody/bun-plugin-tailwind", "./apps/web/src/polices.ts"]
+
+[install]
+linker = "isolated"
+globalStore = true
+exact = true
+saveTextLockfile = true
+minimumReleaseAge = 259200
