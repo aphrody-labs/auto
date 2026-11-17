@@ -86,4 +86,4 @@ Le fichier `.env` contient tous les secrets de la boîte : ne le partagez pas.
 La console est écrite en Rust : [Leptos](https://leptos.dev) (rendu serveur puis hydratation WebAssembly), axum,
 client du moteur Docker par son socket Unix. `console/` se construit avec `cargo leptos build --release` ou
 `docker build console` ; `cargo test --features ssr --lib` lance ses tests. Le préparateur des secrets est la
-sous-commande `aphrody-box preparer`.
+sous-commande `auto-box preparer`.

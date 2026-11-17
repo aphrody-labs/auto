@@ -1,6 +1,6 @@
 # Installation de l'Aphrody Box sous Windows (Docker Desktop) : même déroulé que installer.sh.
 #   powershell -c "irm https://raw.githubusercontent.com/aphrody-labs/auto/main/box/installer.ps1 | iex"
-# Options : $env:BOX_DOSSIER (défaut ~\aphrody-box), $env:BOX_EMAIL, $env:BOX_DOMAINE.
+# Options : $env:BOX_DOSSIER (défaut ~\auto-box), $env:BOX_EMAIL, $env:BOX_DOMAINE.
 $ErrorActionPreference = 'Stop'
 
 function Dire($t) { Write-Host $t -ForegroundColor Cyan }
@@ -9,20 +9,20 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw "Docker Des
 docker info *> $null
 if ($LASTEXITCODE -ne 0) { throw "Docker ne répond pas : lancez Docker Desktop puis relancez ce script." }
 
-$dossier = if ($env:BOX_DOSSIER) { $env:BOX_DOSSIER } else { Join-Path $HOME 'aphrody-box' }
-if ((Test-Path .\compose.yaml) -and (Select-String -Quiet -Path .\compose.yaml -Pattern 'name: aphrody-box')) { $dossier = (Get-Location).Path }
+$dossier = if ($env:BOX_DOSSIER) { $env:BOX_DOSSIER } else { Join-Path $HOME 'auto-box' }
+if ((Test-Path .\compose.yaml) -and (Select-String -Quiet -Path .\compose.yaml -Pattern 'name: auto-box')) { $dossier = (Get-Location).Path }
 New-Item -ItemType Directory -Force $dossier | Out-Null
 Set-Location $dossier
 
 if (-not (Test-Path compose.yaml) -or $env:BOX_MAJ -eq '1') {
   Dire "Téléchargement de la boîte dans $dossier…"
-  $archive = Join-Path $env:TEMP 'aphrody-box.tar.gz'
+  $archive = Join-Path $env:TEMP 'auto-box.tar.gz'
   Invoke-WebRequest https://codeload.github.com/aphrody-labs/auto/tar.gz/refs/heads/main -OutFile $archive
   tar -xzf $archive --strip-components=2 auto-main/box
   Remove-Item $archive
 }
 
-$image = if ($env:BOX_IMAGE_CONSOLE) { $env:BOX_IMAGE_CONSOLE } else { 'ghcr.io/aphrody-labs/aphrody-box:latest' }
+$image = if ($env:BOX_IMAGE_CONSOLE) { $env:BOX_IMAGE_CONSOLE } else { 'ghcr.io/aphrody-labs/auto-box:latest' }
 docker pull -q $image *> $null
 if ($LASTEXITCODE -ne 0) {
   Dire "Image de la console introuvable en ligne : construction sur cette machine (quelques minutes)…"

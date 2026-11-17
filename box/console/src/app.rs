@@ -274,7 +274,7 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
     let session = Resource::new(|| (), |_| est_connecte());
     view! {
-        <Stylesheet id="leptos" href="/pkg/aphrody-box.css" />
+        <Stylesheet id="leptos" href="/pkg/auto-box.css" />
         <Title text="Aphrody Box" />
         <Meta name="robots" content="noindex" />
         <Suspense fallback=|| view! { <p class="attente">"Chargement…"</p> }>

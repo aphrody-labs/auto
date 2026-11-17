@@ -2,7 +2,7 @@
 # Installation de l'Aphrody Box (Linux, macOS) : récupère la boîte si besoin, prépare les secrets, détecte une
 # carte graphique NVIDIA, puis démarre tout. Relancer le script met à jour sans toucher à vos données.
 #   curl -fsSL https://raw.githubusercontent.com/aphrody-labs/auto/main/box/installer.sh | sh
-# Options : BOX_DOSSIER (défaut ~/aphrody-box), BOX_EMAIL, BOX_DOMAINE (HTTPS sur sous-domaines).
+# Options : BOX_DOSSIER (défaut ~/auto-box), BOX_EMAIL, BOX_DOMAINE (HTTPS sur sous-domaines).
 set -eu
 
 dire() { printf '\033[1m%s\033[0m\n' "$*"; }
@@ -12,8 +12,8 @@ command -v docker >/dev/null 2>&1 || echec "Docker est requis : https://docs.doc
 docker compose version >/dev/null 2>&1 || echec "le module « docker compose » est requis (Docker 24 ou plus récent)."
 docker info >/dev/null 2>&1 || echec "Docker ne répond pas : démarrez-le, ou lancez ce script avec sudo."
 
-DOSSIER=${BOX_DOSSIER:-"$HOME/aphrody-box"}
-if [ -f "./compose.yaml" ] && grep -q "name: aphrody-box" ./compose.yaml; then DOSSIER=$(pwd); fi
+DOSSIER=${BOX_DOSSIER:-"$HOME/auto-box"}
+if [ -f "./compose.yaml" ] && grep -q "name: auto-box" ./compose.yaml; then DOSSIER=$(pwd); fi
 mkdir -p "$DOSSIER"
 cd "$DOSSIER"
 
@@ -24,7 +24,7 @@ if [ ! -f compose.yaml ] || [ "${BOX_MAJ:-0}" = 1 ]; then
     | tar -xz --strip-components=2 auto-main/box
 fi
 
-IMAGE=${BOX_IMAGE_CONSOLE:-ghcr.io/aphrody-labs/aphrody-box:latest}
+IMAGE=${BOX_IMAGE_CONSOLE:-ghcr.io/aphrody-labs/auto-box:latest}
 if ! docker pull -q "$IMAGE" >/dev/null 2>&1; then
   dire "Image de la console introuvable en ligne : construction sur cette machine (quelques minutes)…"
   docker build -q -t "$IMAGE" console >/dev/null

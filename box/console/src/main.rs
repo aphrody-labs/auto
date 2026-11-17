@@ -1,4 +1,4 @@
-//! `aphrody-box` : console (sans argument ou `servir`) et préparateur (`preparer <dossier> [options]`).
+//! `auto-box` : console (sans argument ou `servir`) et préparateur (`preparer <dossier> [options]`).
 #![recursion_limit = "512"]
 
 #[tokio::main]
@@ -7,10 +7,10 @@ async fn main() {
     match args.first().map(String::as_str) {
         Some("preparer") => preparer(&args[1..]),
         None | Some("servir") => servir().await,
-        Some("--version") => println!("aphrody-box {}", env!("CARGO_PKG_VERSION")),
+        Some("--version") => println!("auto-box {}", env!("CARGO_PKG_VERSION")),
         Some("sante") => std::process::exit(if sante().await { 0 } else { 1 }),
         Some(autre) => {
-            eprintln!("commande inconnue : {autre}\nusage : aphrody-box [servir] | preparer <dossier> [--gpu|--sans-gpu] [--email a@b.fr] [--domaine exemple.fr] [--hote 192.168.1.20]");
+            eprintln!("commande inconnue : {autre}\nusage : auto-box [servir] | preparer <dossier> [--gpu|--sans-gpu] [--email a@b.fr] [--domaine exemple.fr] [--hote 192.168.1.20]");
             std::process::exit(2);
         }
     }
@@ -31,7 +31,7 @@ async fn sante() -> bool {
 }
 
 fn preparer(args: &[String]) {
-    use aphrody_box::serveur::preparer::{Options, preparer};
+    use auto_box::serveur::preparer::{Options, preparer};
     let option = |nom: &str| args.iter().position(|a| a == nom).and_then(|i| args.get(i + 1)).cloned();
     let dossier = args
         .iter()
@@ -65,8 +65,8 @@ fn preparer(args: &[String]) {
 }
 
 async fn servir() {
-    use aphrody_box::app::{App, shell};
-    use aphrody_box::serveur::{self, Config, Etat, docker::Docker, ollama::Ollama};
+    use auto_box::app::{App, shell};
+    use auto_box::serveur::{self, Config, Etat, docker::Docker, ollama::Ollama};
     use axum::Router;
     use leptos::prelude::*;
     use leptos_axum::{LeptosRoutes, generate_route_list};
@@ -75,7 +75,7 @@ async fn servir() {
         eprintln!("{e}");
         std::process::exit(1);
     });
-    let projet = config.env.get("BOX_PROJET").cloned().unwrap_or_else(|| "aphrody-box".into());
+    let projet = config.env.get("BOX_PROJET").cloned().unwrap_or_else(|| "auto-box".into());
     let socket = config.env.get("BOX_DOCKER_SOCKET").cloned().unwrap_or_else(|| "/var/run/docker.sock".into());
     let ollama = config.env.get("BOX_OLLAMA_URL").cloned().unwrap_or_else(|| "http://ollama:11434".into());
     serveur::installer(Etat {

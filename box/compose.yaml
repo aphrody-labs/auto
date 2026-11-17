@@ -1,8 +1,8 @@
 # Aphrody Box : Auto, n8n, Hermes Agent, Obsidian et Ollama prêts à l'emploi sur une seule machine, avec une
 # console d'administration. Installation : ./installer.sh (Linux, macOS) ou installer.ps1 (Windows).
-# Tous les secrets viennent de .env, écrit par `aphrody-box preparer` ; vos fichiers vivent dans ./coffre et
+# Tous les secrets viennent de .env, écrit par `auto-box preparer` ; vos fichiers vivent dans ./coffre et
 # ./donnees, les bases dans des volumes Docker.
-name: aphrody-box
+name: auto-box
 
 x-redemarrage: &redemarrage
   restart: unless-stopped
@@ -39,12 +39,12 @@ services:
   # redémarrages des conteneurs de ce projet.
   console:
     <<: *redemarrage
-    image: ${BOX_IMAGE_CONSOLE:-ghcr.io/aphrody-labs/aphrody-box:latest}
+    image: ${BOX_IMAGE_CONSOLE:-ghcr.io/aphrody-labs/auto-box:latest}
     build: ./console
     user: "0"
     env_file: .env
     environment:
-      BOX_PROJET: aphrody-box
+      BOX_PROJET: auto-box
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:

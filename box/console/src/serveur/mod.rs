@@ -26,7 +26,7 @@ impl Config {
         let (secret, mot_de_passe) = (lire("BOX_SECRET"), lire("BOX_ADMIN_MOT_DE_PASSE"));
         if secret.len() < 16 || mot_de_passe.len() < 8 {
             return Err(
-                "BOX_SECRET (16 caractères ou plus) et BOX_ADMIN_MOT_DE_PASSE (8 ou plus) requis : lancez `aphrody-box preparer`"
+                "BOX_SECRET (16 caractères ou plus) et BOX_ADMIN_MOT_DE_PASSE (8 ou plus) requis : lancez `auto-box preparer`"
                     .into(),
             );
         }

@@ -1,5 +1,5 @@
 [package]
-name = "aphrody-box"
+name = "auto-box"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ description = "Console d'administration de l'Aphrody Box (Leptos, rendu serveur 
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "aphrody-box"
+name = "auto-box"
 path = "src/main.rs"
 required-features = ["ssr"]
 
@@ -75,7 +75,7 @@ lto = true
 panic = "abort"
 
 [package.metadata.leptos]
-output-name = "aphrody-box"
+output-name = "auto-box"
 site-root = "target/site"
 site-pkg-dir = "pkg"
 style-file = "style/console.css"

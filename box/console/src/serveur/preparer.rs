@@ -1,6 +1,6 @@
 //! Préparation d'une boîte : secrets tirés au hasard dans `.env` (les valeurs déjà présentes sont conservées),
 //! configuration de Hermes branchée sur Ollama, coffre Obsidian ouvert d'office avec une note d'accueil.
-//! `aphrody-box preparer /box [--gpu|--sans-gpu] [--email a@b.fr] [--domaine exemple.fr]`
+//! `auto-box preparer /box [--gpu|--sans-gpu] [--email a@b.fr] [--domaine exemple.fr]`
 use base64::Engine;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -135,7 +135,7 @@ pub fn construire_env(existant: &BTreeMap<String, String>, o: &Options) -> Strin
     let connues: Vec<&str> = sections.iter().flat_map(|(_, v)| v.iter().map(|(k, _)| *k)).collect();
     let autres: Vec<(&str, String)> =
         existant.iter().filter(|(k, _)| !connues.contains(&k.as_str())).map(|(k, v)| (k.as_str(), v.clone())).collect();
-    let mut texte = String::from("# Aphrody Box : généré par `aphrody-box preparer`, vos modifications sont conservées.\n");
+    let mut texte = String::from("# Aphrody Box : généré par `auto-box preparer`, vos modifications sont conservées.\n");
     for (titre, valeurs) in sections.iter().chain(std::iter::once(&("Ajouts", autres))) {
         if valeurs.is_empty() {
             continue;
@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn dossier_prepare() {
-        let d = std::env::temp_dir().join(format!("aphrody-box-{}", aleatoire(6)));
+        let d = std::env::temp_dir().join(format!("auto-box-{}", aleatoire(6)));
         std::fs::create_dir_all(&d).unwrap();
         let v = preparer(&d, &Options::default()).unwrap();
         assert!(std::fs::read_to_string(d.join("donnees/hermes/config.yaml")).unwrap().contains(&v["BOX_MODELE"]));

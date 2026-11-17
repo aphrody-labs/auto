@@ -1,6 +1,6 @@
 //! Console d'administration de l'Aphrody Box : interface Leptos rendue par le serveur puis hydratée en
 //! WebAssembly ; fonctions serveur pour l'état des services (moteur Docker, sondes HTTP), les journaux, le
-//! redémarrage, les modèles d'Ollama et les accès. Le binaire porte aussi le préparateur (`aphrody-box preparer`).
+//! redémarrage, les modèles d'Ollama et les accès. Le binaire porte aussi le préparateur (`auto-box preparer`).
 
 #![recursion_limit = "512"]
 
