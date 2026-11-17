@@ -14,12 +14,9 @@ const frameWorkers = Number(Bun.env.AUTO_VIDEO_FRAME_WORKERS ?? 4);
 if (!Number.isSafeInteger(frameWorkers) || frameWorkers < 1 || frameWorkers > 4)
   throw new Error("AUTO_VIDEO_FRAME_WORKERS doit être compris entre 1 et 4");
 const command = process.argv[2] ?? "preparer";
-const packageRoot = (
-  Bun.env.BUN_VIDEO_PACKAGE_ROOT ??
-  Bun.fileURLToPath(new URL("../../packages/bun-video/", Bun.pathToFileURL(process.execPath)))
-)
-  .replaceAll("\\", "/")
-  .replace(/\/$/, "");
+if (!Bun.env.BUN_VIDEO_PACKAGE_ROOT)
+  throw new Error("BUN_VIDEO_PACKAGE_ROOT doit désigner le paquet Bun Video (docs/VIDEO.md).");
+const packageRoot = Bun.env.BUN_VIDEO_PACKAGE_ROOT.replaceAll("\\", "/").replace(/\/$/, "");
 const cachedFfmpeg = [
   ...new Bun.Glob(".cache/video-outils/**/bin/ffmpeg.exe").scanSync({ cwd: root, onlyFiles: true }),
 ][0];

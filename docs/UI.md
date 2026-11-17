@@ -65,7 +65,7 @@ reçues se classent depuis `/app/achats`. Voir [CHANTIERS.md](CHANTIERS.md).
 
 ```sh
 bun test apps/web                       # formatage, client API, serveur et proxy, parcours navigateur
-AUTO_CAPTURES=C:/temp/captures bun test apps/web/e2e
+AUTO_CAPTURES=.cache/captures bun test apps/web/e2e
 ```
 
 `e2e/parcours.test.ts` lance l'API réelle sur une base Postgres jetable, le front et Chrome headless (celui de

@@ -21,21 +21,21 @@ Le rendu courant exige Windows, Chromium installé, un pilote NVIDIA compatible 
 La voix peut utiliser la synthèse Windows ou le clonage local Chatterbox, qui n’envoie pas l’enregistrement de référence à un service vocal. Pour préparer le profil Chatterbox avec CUDA sur ce poste :
 
 ```powershell
-$env:UV_PROJECT_ENVIRONMENT = 'C:/chemin/du/depot/.cache/voix-auto'
+$env:UV_PROJECT_ENVIRONMENT = (Join-Path $PWD '.cache/voix-auto')
 bun uv sync --locked --python 3.12 --project scripts/video-voice
-$env:AUTO_VIDEO_VOICE_REFERENCE = 'C:/chemin/vers/un-extrait-consenti.wav'
+$env:AUTO_VIDEO_VOICE_REFERENCE = '<extrait-consenti>.wav'
 bun scripts/video-lancement-voix.ts
 ```
 
 `scripts/video-voice/pyproject.toml` et son verrou pinent Python 3.12, Chatterbox et les roues PyTorch CUDA 12.4. `chatterbox-tts` 0.1.7 fournit le modèle multilingue V2 (français) ; sa sortie locale est générée à partir d’un extrait consenti. Le premier lancement télécharge les poids publics du modèle dans le cache Hugging Face de l’utilisateur. Le chemin d’enregistrement n’est pas inclus dans la vidéo publiée. Les sous-titres sont temporisés dans les limites de chaque scène, car cette version ne fournit pas d’alignement mot à mot.
 
-Le propriétaire de capture reste **Bun Video** : `captureNativeWebViewFrames` dans `packages/bun-video/src/hyperframes-native.ts`. Définir les chemins du poste si la découverte automatique ne convient pas :
+Le propriétaire de capture reste **Bun Video** : `captureNativeWebViewFrames` dans `packages/bun-video/src/hyperframes-native.ts`. `BUN_VIDEO_PACKAGE_ROOT` est obligatoire (le dépôt Auto ne déduit pas l’emplacement du runtime) ; les autres chemins se définissent si la découverte automatique ne convient pas :
 
 ```powershell
-$env:BUN_VIDEO_PACKAGE_ROOT = 'C:/bun/packages/bun-video'
-$env:AUTO_CHROME = 'C:/chemin/chrome.exe'
-$env:AUTO_VIDEO_FFMPEG = 'C:/chemin/ffmpeg.exe'
-$env:AUTO_VIDEO_FFPROBE = 'C:/chemin/ffprobe.exe'
+$env:BUN_VIDEO_PACKAGE_ROOT = '<racine du checkout Aphrody>/packages/bun-video'
+$env:AUTO_CHROME = '<chrome>.exe'
+$env:AUTO_VIDEO_FFMPEG = '<ffmpeg>.exe'
+$env:AUTO_VIDEO_FFPROBE = '<ffprobe>.exe'
 $env:AUTO_VIDEO_CAPTURE_PROVIDER = 'native'
 $env:AUTO_VIDEO_FRAME_WORKERS = '4'
 ```

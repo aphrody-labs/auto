@@ -28,12 +28,15 @@ PAPER = (246, 246, 240)
 INK = (30, 41, 59)
 
 
+FONTS = os.path.join(os.environ.get("WINDIR", "."), "Fonts")
+
+
 def F(size, bold=False):
-    return ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf", size)
+    return ImageFont.truetype(os.path.join(FONTS, "segoeuib.ttf" if bold else "segoeui.ttf"), size)
 
 
 def MONO(size):
-    return ImageFont.truetype(r"C:\Windows\Fonts\consola.ttf", size)
+    return ImageFont.truetype(os.path.join(FONTS, "consola.ttf"), size)
 
 
 def rr(d, box, fill=None, outline=None, r=24, w=3):

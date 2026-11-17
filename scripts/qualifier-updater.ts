@@ -1,4 +1,5 @@
 // Teste le téléchargement et la signature par le plugin Rust, sans installer de logiciel.
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 const racine = Bun.fileURLToPath(new URL("../", import.meta.url))
   .replaceAll("\\", "/")
@@ -33,7 +34,22 @@ await commande([
   "-c",
   "cargo build --release --locked --target x86_64-pc-windows-gnu --example qualifier_updater && mkdir -p /w/dist/qualification-updater && cp /target/x86_64-pc-windows-gnu/release/examples/qualifier_updater.exe /w/dist/qualification-updater/ && cp /target/x86_64-pc-windows-gnu/release/WebView2Loader.dll /w/dist/qualification-updater/",
 ]);
-const mt = Bun.env.AUTO_MT ?? "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe";
+/** mt.exe du Windows SDK le plus récent : AUTO_MT, sinon le Kit installé sous ProgramFiles(x86), sinon le PATH. */
+function trouverMt(): string {
+  if (Bun.env.AUTO_MT) return Bun.env.AUTO_MT;
+  const kits = Bun.env["ProgramFiles(x86)"];
+  const bin = kits && join(kits, "Windows Kits", "10", "bin");
+  if (bin && existsSync(bin)) {
+    const versions = [...new Bun.Glob("*/x64/mt.exe").scanSync({ cwd: bin, onlyFiles: true })];
+    versions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const derniere = versions.at(-1);
+    if (derniere) return join(bin, derniere);
+  }
+  const surLePath = Bun.which("mt");
+  if (!surLePath) throw new Error("mt.exe introuvable : installer le Windows SDK ou définir AUTO_MT.");
+  return surLePath;
+}
+const mt = trouverMt();
 const exe = join(racine, "dist/qualification-updater/qualifier_updater.exe");
 await commande([
   mt,

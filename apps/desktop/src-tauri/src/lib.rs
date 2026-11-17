@@ -147,7 +147,7 @@ mod tests {
     fn url_de_l_application() {
         assert_eq!(url_application("http://localhost:3001").unwrap().as_str(), "http://localhost:3001/app");
         assert_eq!(url_application(" https://auto.exemple.fr/ ").unwrap().as_str(), "https://auto.exemple.fr/app");
-        assert!(url_application("file:///C:/app").is_err());
+        assert!(url_application("file:///C:/app").is_err()); // paths:ok schéma file refusé
         assert!(url_application("pas une url").is_err());
     }
 

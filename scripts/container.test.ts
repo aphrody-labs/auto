@@ -3,13 +3,14 @@ import { $ } from "bun";
 
 const image = Bun.env.AUTO_CONTAINER_IMAGE;
 const imageApplication = Bun.env.AUTO_APP_IMAGE;
+const HOME_CONTENEUR = "/home/auto"; // paths:ok dossier personnel fixé par les Dockerfile
 (image ? test : test.skip)(
   "image web : démarrage non-root en lecture seule, HTML et proxy santé",
   async () => {
     const api = Bun.serve({ hostname: "0.0.0.0", port: 0, fetch: () => Response.json({ statut: "ok" }) });
     const nom = `auto-web-test-${crypto.randomUUID()}`;
     try {
-      await $`docker run -d --name ${nom} --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true --tmpfs /tmp:rw,nosuid,nodev,size=128m,mode=1777 --tmpfs /home/auto:rw,nosuid,nodev,size=128m,uid=10001,gid=10001 --add-host host.docker.internal:host-gateway -e ${`AUTO_API_URL=http://host.docker.internal:${api.port}`} -p 127.0.0.1::3001 ${image!}`.quiet();
+      await $`docker run -d --name ${nom} --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true --tmpfs /tmp:rw,nosuid,nodev,size=128m,mode=1777 --tmpfs ${HOME_CONTENEUR}:rw,nosuid,nodev,size=128m,uid=10001,gid=10001 --add-host host.docker.internal:host-gateway -e ${`AUTO_API_URL=http://host.docker.internal:${api.port}`} -p 127.0.0.1::3001 ${image!}`.quiet();
       const adresse = (await $`docker port ${nom} 3001/tcp`.text()).trim();
       let reponse: Response | undefined;
       for (let essai = 0; essai < 100; essai++) {

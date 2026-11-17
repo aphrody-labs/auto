@@ -156,7 +156,7 @@ test("multipart : CSRF étroit, Bearer sans Origin, traversée/SSRF/tailles et e
   ).toBe(415);
   for (const chemin of [
     "../controle.txt",
-    "C:/controle.txt",
+    "C:/controle.txt", // paths:ok chemin absolu Windows refusé par construction
     "https://127.0.0.1/controle.txt",
     "//serveur/controle.txt",
   ])

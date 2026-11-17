@@ -1,5 +1,5 @@
 // Chemin d'un dossier du poste vu par le démon Docker : sous Windows avec un dockerd Linux hors Docker Desktop
-// (WSL), `C:/x` est monté `/mnt/c/x` ; ailleurs, le chemin est inchangé.
+// (WSL), le lecteur est monté sous `/mnt/<lettre>` ; ailleurs, le chemin est inchangé.
 import { $ } from "bun";
 
 export async function racineDocker(chemin: string): Promise<string> {
