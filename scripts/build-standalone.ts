@@ -4,7 +4,7 @@ import type { BunPlugin } from "bun";
 const moduleTailwind = "@aphrody/bun-plugin-tailwind";
 const { tailwind } = (await import(moduleTailwind)) as { tailwind: () => BunPlugin };
 
-const { greffonPolices } = await import("../apps/web/src/polices.ts");
+const { greffonPolices } = await import("../apps/web/src/polices");
 
 const cible = Bun.argv[2] ?? (process.platform === "win32" ? "windows-x64" : "linux-x64");
 if (!["windows-x64", "linux-x64"].includes(cible)) throw new Error("Cible : windows-x64 ou linux-x64");
