@@ -8,7 +8,7 @@ Contact facturation de l'opérateur : contact@aphrody.com.
 
 État du 25 octobre 2026 : la configuration active utilise exclusivement le nouveau compte **Aphrody**
 (`acct_1UUDExJjg4RzOszD`), dans l'organisation Aphrody. Sa sandbox dédiée
-(`acct_1UUDFkQpL4EotU2M`) alimente `recette-auto.aphrody.com`, dans une pile isolée sur le VPS.
+(`acct_1UUDFkQpL4EotU2M`) a alimenté la recette `recette-auto.aphrody.com` (pile isolée de l’ancien serveur, retirée).
 Checkout, paiement fictif, webhooks et abonnement Business y sont vérifiés. La vérification de l'entreprise
 reste nécessaire pour autoriser les accès et encaissements de production.
 `scripts/stripe-provisionner.ts` provisionne le catalogue, la TVA, le portail et le webhook sans créer

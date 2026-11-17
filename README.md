@@ -9,8 +9,8 @@ application mobile, CLI, serveur MCP, plugin Claude Code et extension Chrome.
 ## Surfaces
 
 Distribution serveur autonome, images Docker et Compose de production : [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
-Production : serveur OVH `vps` (conteneurs Docker derrière Cloudflare Tunnel) et base PostgreSQL **Neon**
-(projet `auto`, `aws-eu-central-1`) : [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md).
+Production : hôte usa auto-hébergé (conteneurs Docker, PostgreSQL, S3 et moteur IA, derrière Cloudflare Tunnel) :
+[docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md).
 
 | Surface                | Pour qui, pour quoi                                                         | Dossier                    |
 | ---------------------- | --------------------------------------------------------------------------- | -------------------------- |
@@ -25,7 +25,7 @@ Production : serveur OVH `vps` (conteneurs Docker derrière Cloudflare Tunnel) e
 
 ## Périmètre
 
-En ligne : https://auto.aphrody.com (production sur serveur OVH, voir `docs/DEPLOIEMENT.md`). API documentée en OpenAPI
+En ligne : https://auto.aphrody.com (production sur l’hôte usa, voir `docs/DEPLOIEMENT.md`). API documentée en OpenAPI
 3.1 : `GET /v1/openapi.json` et `docs/openapi.json`.
 
 | Domaine                      | Contenu                                                                                                                                           | Brique                                                       | État                                                |

@@ -77,7 +77,7 @@ Trois webhooks fournisseur reçus en HTTP 200. Facture `in_1UUDKEQpL4EotU2MtifJC
 `evt_1UUDKHQpL4EotU2MpU4kI8Rw` : signature absente refusée et deux rejeux ignorés.
 La résiliation de cet abonnement de test est programmée à l'échéance. Aucun débit réel.
 
-Une recette isolée est disponible sur `https://recette-auto.aphrody.com` : réseau Docker `auto-recette`,
+Une recette isolée a existé sur `recette-auto.aphrody.com` (retirée avec l’ancien serveur) : réseau Docker `auto-recette`,
 Postgres distinct `auto-pg-recette`/volume `auto_pg_recette`, API et web distincts, aucun port hôte publié.
 Elle ne copie pas les données, secrets Google/Microsoft, clés S3 ni la clé maître de production.
 Le relais SMTP est partagé ; les comptes de recette utilisent le domaine réservé `example.test`.
@@ -85,8 +85,7 @@ Le relais SMTP est partagé ; les comptes de recette utilisent le domaine réser
 Le script `scripts/stripe-provisionner.ts` crée ou retrouve les deux produits, quatre prix, TVA française
 20 % exclusive, configuration du portail et webhook. Il reprend un fichier de sortie existant sans recréer
 les prix ni le webhook. Clé de test exigée par défaut ; `--production` exige une clé live et un compte
-autorisé à encaisser. Configurations/secrets hors dépôt sous `~/.auto/stripe-*-recette.env` et
-`vps:~/auto/recette/*.env`. API et webhook épinglés à `2026-09-30.endive`.
+autorisé à encaisser. Configurations/secrets hors dépôt sous `~/.auto/stripe-*-recette.env`. API et webhook épinglés à `2026-09-30.endive`.
 
 Preuves de la recette antérieure (historique ; les identifiants ci-dessous ne sont plus la configuration active) :
 
@@ -120,37 +119,10 @@ le format officiel ou la chaîne de génération native du fournisseur.
 
 ### Déploiement et reprise
 
-Image déployée sur API, worker et web : `auto-app:integrations-20261025`, digest
-`sha256:7fdf04806117d8e91e84b6f4c29d24fcf1c2b5525d129bd3caa06ef929bf9eb9`.
-Cette image étend `auto-app:auth-mail-20261024` avec les corrections des retours Stripe et de l'adaptateur PA.
-Le patch contient seulement les changements d'intégrations et les scripts de diagnostic. Les autres travaux
-locaux du dépôt ne sont pas inclus. Les anciens conteneurs sont conservés arrêtés sous
-`auto-api-before-smtp`, `auto-worker-before-smtp`, `auto-web-before-smtp` ; l'environnement précédent est
-`~/auto/prod.env.before-smtp`. Le patch source et son Dockerfile sont sous `~/auto/auth-mail-patch`.
-Le dernier retour arrière applicatif est `auto-{api,worker,web}-before-flexible` (image du 24 octobre) ; l'environnement
-avant Microsoft est `~/auto/prod.env.before-microsoft`. Sources, Dockerfile et déploiement avec contrôle
-de santé et retour arrière automatique sous `~/auto/integrations-patch`.
-
-Le durcissement SMTP (TLS, validation, arrêt si relais absent), la liaison explicite Google/Microsoft et
-la gestion des comptes liés dans Paramètres → Sécurité sont déployés avec cette image.
-
-### VPS et Cloudflare
-
-Les DNS proxifiés `auto.aphrody.com` et `recette-auto.aphrody.com` pointent vers le tunnel `auto`, sain avec quatre connexions. Son
-origine est `http://auto-web:3001`, puis le proxy web dessert l'API privée sur `auto-api:3000`.
-TLS Cloudflare est en mode strict. Aucun port Docker n'est publié sur l'hôte ; les cinq conteneurs
-web, API, worker, tunnel et Postgres partagent `auto-prod` et redémarrent avec `unless-stopped`.
-
-La règle Cloudflare `auto-private-no-cache` (`ff1d3a792e354eb796196d598cd3b66e`) désactive explicitement
-le cache sur les deux hôtes pour `/v1/`, `/api/auth/`, `/app`, `/mcp`, `/devis`, `/facture`, `/health` et les requêtes portant
-le cookie de session Auto. La règle existante du CDN est conservée. Les sondes publiques après application
-répondent 200 avec `CF-Cache-Status: DYNAMIC` ; la session anonyme vaut `null` avec `Cache-Control: no-store`.
-
-Sauvegarde chiffrée et copie hors site sur `dbfr` vérifiées le 24 octobre. La restauration du dump
-quotidien dans une base jetable a retrouvé 55 tables ; la base de recette est ensuite supprimée.
-Le script installé `~/auto/sauvegarde.sh` est versionné dans `scripts/vps-sauvegarde.sh` : il charge les
-secrets avec Bun `--env-file` plutôt que `source`, afin de respecter le format du fichier Docker.
-La sauvegarde manuelle après correction a réussi et la copie hors site contient sept fichiers.
+Les images, la pile de production (hôte usa), les sauvegardes et leur restauration sont décrites dans
+[DEPLOIEMENT.md](DEPLOIEMENT.md) ; la bascule du 2026-11-12 depuis l'ancien serveur fr1 (Neon, tunnel `auto`,
+recette isolée) est consignée dans [MIGRATION.md](../MIGRATION.md). Les constats de cette qualification (Google,
+mail, Microsoft, Stripe, PA) restent valables ; seuls l'hébergement et la base ont changé.
 
 ### Accès OVH et limite du compte de service
 

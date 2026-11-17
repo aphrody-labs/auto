@@ -171,8 +171,10 @@ if (action === "inventaire") {
   const enfants: ReturnType<typeof Bun.spawn>[] = [];
   let tunnel: ReturnType<typeof Bun.spawn> | undefined;
   let sondeTunnel = false;
+  // Hôte ssh du moteur d'extraction (alias de ~/.ssh/config) ; sans lui, aucun tunnel n'est ouvert.
+  const hoteIa = Bun.env.AUTO_IA_HOTE;
   const maintenirTunnel = async () => {
-    if (sondeTunnel || c.env.AUTO_LLM_URL !== "http://127.0.0.1:18798/v1") return;
+    if (!hoteIa || sondeTunnel || c.env.AUTO_LLM_URL !== "http://127.0.0.1:18798/v1") return;
     sondeTunnel = true;
     try {
       const disponible = await fetch(c.env.AUTO_LLM_URL + "/models", { signal: AbortSignal.timeout(2000) })
@@ -193,7 +195,7 @@ if (action === "inventaire") {
             "ServerAliveCountMax=3",
             "-L",
             "127.0.0.1:18798:127.0.0.1:8798",
-            "dbfr",
+            hoteIa,
           ],
           {
             stdin: "ignore",

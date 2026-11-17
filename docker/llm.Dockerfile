@@ -2,7 +2,7 @@
 # Pas d'image officielle llama.cpp ici (base Ubuntu, exclue par la politique conteneurs).
 #
 #   docker build -f docker/llm.Dockerfile -t auto-llm:<tag> docker
-#   docker run -v /srv/auto/llm:/models:ro auto-llm:<tag>   (modèle : /models/model.gguf)
+#   docker run -v "$RACINE/llm":/models:ro auto-llm:<tag>   (modèle : /models/model.gguf)
 
 FROM alpine:3.23 AS build
 ARG LLAMA_TAG=v0.9.0

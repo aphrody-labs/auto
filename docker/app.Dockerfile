@@ -6,7 +6,7 @@
 #   docker build --target sauvegarde  -t auto-sauvegarde:<version> .   pg_dump chiffré (cron de l'hôte)
 #   docker build --target application -t auto-app:<version> .  référence : natif compilé ici (rust Alpine)
 #
-# Le natif livré vient de `ay build -t linux-musl --release --dylib -- -p auto-ffi`, copié dans native/.
+# Le natif livré vient de `ay build -t linux-musl --release --dylib -- -p auto-ffi`, copié dans native/ (cdylib musl).
 
 ARG BUN_IMAGE=oven/bun:1.4.4-alpine
 
@@ -17,7 +17,7 @@ WORKDIR /w
 COPY Cargo.toml Cargo.lock rustfmt.toml ./
 COPY crates crates
 COPY vendor/suite vendor/suite
-# cdylib sur musl : sans -crt-static, cargo abandonne le type cdylib (AY_FIELD_TEST.md).
+# cdylib sur musl : sans -crt-static, cargo abandonne le type cdylib (`--dylib` de ay build).
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \

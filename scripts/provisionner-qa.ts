@@ -1,6 +1,6 @@
 // Comptes de contrôle réservés, sans facture émise. Identifiants écrits uniquement dans un fichier privé.
 const [origine, destination] = Bun.argv.slice(2);
-if (!origine || !["https://auto.aphrody.com", "https://recette-auto.aphrody.com"].includes(origine) || !destination)
+if (!origine || !["https://auto.aphrody.com"].includes(origine) || !destination)
   throw new Error("Usage : origine Auto autorisée et destination privée");
 const existant = Bun.file(destination);
 if (await existant.exists()) {

@@ -1,18 +1,17 @@
 // Exploitation de la production sur usa (alias ssh `prd`, IP publique ; le maillage 10.200.77.x peut être coupé) :
-// `ay ssh` pour l'hôte et les conteneurs, sonde publique par fetch. Données et fichiers d'environnement : /srv/auto.
+// `ay ssh` pour l'hôte et les conteneurs, sonde publique par fetch. Données et fichiers d'environnement : RACINE (scripts/hote.ts).
 //   bun run prod etat       hôte, conteneurs auto-*, santé publique
 //   bun run prod deployer   image construite ici, chargée sur le serveur, API, worker et web relancés
 import { $ } from "bun";
 import { empreinteFichiers } from "./empreinte";
+import { HOTE, RACINE } from "./hote";
 
 const URL_PUBLIQUE = "https://auto.aphrody.com";
-const HOTE = Bun.env.AUTO_HOTE ?? "prd";
-const RACINE = "/srv/auto";
 
 /** Options communes : non-root, système de fichiers en lecture seule, journaux bornés. */
 const COMMUN =
   "--init --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges:true " +
-  "--tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 --tmpfs /home/auto:rw,nosuid,nodev,size=256m,uid=10001,gid=10001 " +
+  "--tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 --tmpfs /home/auto:rw,nosuid,nodev,size=256m,uid=10001,gid=10001 " + // paths:ok HOME du conteneur
   "--log-driver json-file --log-opt max-size=10m --log-opt max-file=3";
 
 /** Conteneurs applicatifs : options propres (le worker n'expose pas de port). */

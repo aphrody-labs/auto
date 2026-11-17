@@ -211,7 +211,7 @@ export function creerApp(sql: Sql, publier: Emetteur = outbox, options: OptionsA
   // Quotas du plan (lot abonnement) appliqués aux points d'entrée concernés.
   return abonnement.appliquerQuotas(sql, {
     ...Object.assign({}, ...MODULES.map((m) => m.routes(ctx))),
-    // Version livrée : identifiant de livraison et commit Git posés par scripts/release-vps.ts.
+    // Version livrée : identifiant de livraison et commit Git fournis par l'environnement du conteneur.
     "/health": () =>
       Response.json({ ok: true, version: Bun.env.AUTO_VERSION ?? null, commit: Bun.env.AUTO_COMMIT ?? null }),
     "/v1/openapi.json": {

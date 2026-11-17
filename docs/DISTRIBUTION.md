@@ -62,11 +62,9 @@ Pour vérifier l’image web construite : `AUTO_CONTAINER_IMAGE=auto-web:product
 
 Ajouter `AUTO_APP_IMAGE=auto-app:production` active également un déploiement Compose jetable complet : les tests vérifient l’API, le worker sans redémarrage, le front et `fsync=on`, puis suppriment uniquement le projet et le volume créés pour ce test.
 
-## Livraison du VPS
+## Livraison
 
-`bun run release:vps preparer` crée un contexte immuable sans secrets, vérifie les empreintes des trois distributions Craft et de la FFI, puis construit sur le VPS les images application et web. `--base=<livraison>` réutilise les ressources natives et Craft dont les empreintes correspondent, sans transférer une image complète. `valider` qualifie les migrations sur une copie temporaire de la base ; `deployer` sauvegarde la production chiffrée avec copie hors site, qualifie cette copie puis bascule API, worker et web. Les images précédentes restent disponibles. Une restauration de données reste une opération explicite.
-
-Le VPS utilise ses fichiers protégés `~/auto/prod.env` et `~/auto/pg.env`. Les volumes Arrivages, le groupe du worker et la configuration IA sont conservés. Les contrôles de recette native utilisent une base et un réseau distincts (`scripts/release-recette-vps.ts`), sans worker d’envoi.
+`bun run prod deployer` (`scripts/prod.ts`, voir [DEPLOIEMENT.md](DEPLOIEMENT.md)) construit l’image applicative localement, la charge sur l’hôte usa (voie complète) ou n’y envoie que les sources TypeScript (voie rapide, quand l’empreinte du natif est inchangée), puis recrée API, worker et web et attend `/health`. Les fichiers protégés `prod.env` restent sur l’hôte, sous la racine des données ; les volumes Arrivages, médias et distributions sont des montages de cette racine.
 
 ## Import par lots
 
@@ -95,7 +93,7 @@ La page publique est `https://auto.aphrody.com/telechargements`. Elle présente 
 
 Les versions stables utilisent trois nombres (`0.2.0`). Le service refuse les régressions. Les noms de fichiers sont immuables et limités aux entrées validées du manifeste. Les requêtes HEAD, ETag/If-Range, plages simples, suffixes et plages insatisfaisables 416 sont prises en charge sans charger les binaires complets en mémoire.
 
-Le conteneur web monte `~/auto/distributions` et `~/auto/media` en lecture seule. `scripts/publier-distributions.ts <dossier>` vérifie chaque taille et empreinte, transfère dans un répertoire de préparation, refuse le remplacement d’un fichier publié par des octets différents, puis publie le manifeste atomiquement. La dernière livraison locale doit déjà être validée et disponible sur le VPS. Les clés privées restent sur la machine de signature.
+Le conteneur web monte `distributions/` et `media/` de la racine des données de l’hôte en lecture seule. `scripts/publier-distributions.ts <dossier>` vérifie chaque taille et empreinte, transfère dans un répertoire de préparation, refuse le remplacement d’un fichier publié par des octets différents, puis publie le manifeste atomiquement. Les clés privées restent sur la machine de signature.
 
 ### Windows
 
@@ -124,4 +122,4 @@ Android confirme l’installation d’un APK et exige la même clé pour une mis
 
 `bun scripts/publier-media.ts` vérifie le reçu de décodage et le SHA-256 du MP4, vérifie à nouveau les octets transférés puis effectue un renommage atomique. La purge Cloudflare ne concerne que l’URL de la vidéo. Le film français publié le 25 octobre dure 259,833 secondes en 1080p/24 fps ; lecture et recherche à 35 secondes sont qualifiées sur ordinateur et mobile.
 
-`scripts/verifier-production-vps.ts`, exécuté sur le VPS, contrôle les conteneurs actifs : utilisateur 10001, racine et médias en lecture seule, capacités retirées, aucun port exposé, santé, absence des outils OCR dans le web et durabilité PostgreSQL. Il n’affiche aucune variable secrète. Les quatre téléchargements complets ont été reçus depuis l’URL publique et comparés à leurs tailles/SHA-256 ; HEAD et reprise 206 ont également été vérifiés.
+Les options d’isolation des conteneurs (utilisateur 10001, racine en lecture seule, capacités retirées, aucun port publié) sont fixées par `scripts/prod.ts` et vérifiées sur l’image web par `scripts/container.test.ts`. Les quatre téléchargements complets ont été reçus depuis l’URL publique et comparés à leurs tailles/SHA-256 ; HEAD et reprise 206 ont également été vérifiés.

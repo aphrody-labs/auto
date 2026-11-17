@@ -26,7 +26,6 @@
     "build:native": "bun scripts/build-native.ts",
     "build:desktop": "bun scripts/build-desktop.ts",
     "build:android": "bun scripts/build-android.ts",
-    "release:vps": "bun scripts/deployer-vps.ts",
     "build:standalone": "bun scripts/build-standalone.ts",
     "build:all": "bun run build:native && bun run build:standalone && bun run build:desktop && bun --cwd apps/extension run build",
     "prod": "bun scripts/prod.ts",

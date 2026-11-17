@@ -1,12 +1,14 @@
 // Le répertoire local contient manifest.json et uniquement les fichiers publics référencés.
 import { catalogue } from "../apps/web/src/distributions";
+import { copier, distant, RACINE } from "./hote";
+
 const dossier = Bun.argv[2];
 if (!dossier) throw Error("Usage : bun scripts/publier-distributions.ts <répertoire>");
-const livraison = (await Bun.file(".cache/last-release.json").json()).version as string;
-if (!/^\d{8}T\d{6}Z-[a-f0-9]{8}$/.test(livraison)) throw Error("Livraison validée invalide");
 const c = await catalogue(dossier);
 if (!c?.fichiers.length) throw Error("Catalogue absent ou invalide");
 for (const a of c.fichiers) {
+  if (!/^[A-Za-z0-9._-]+$/.test(a.fichier)) throw Error(`Nom de fichier refusé : ${a.fichier}`);
+  if (!a.fichier.includes(c.version)) throw Error("Un fichier doit porter sa version immuable");
   const f = Bun.file(`${dossier}/${a.fichier}`);
   const h = new Bun.CryptoHasher("sha256");
   if (!(await f.exists()) || f.size !== a.octets) throw Error(`Fichier absent ou incomplet : ${a.fichier}`);
@@ -14,39 +16,51 @@ for (const a of c.fichiers) {
   if (h.digest("hex") !== a.sha256) throw Error(`Empreinte incorrecte : ${a.fichier}`);
 }
 const id = crypto.randomUUID();
-const depot = `auto/distributions/.publication-${id}`;
-async function commande(args: string[]) {
-  const p = Bun.spawn(args, { stdin: "ignore", stdout: "inherit", stderr: "inherit" });
-  if (await p.exited) throw Error("Publication interrompue ; ancien catalogue conservé");
+const base = `${RACINE}/distributions`;
+const depot = `${base}/.publication-${id}`;
+const echec = "Publication interrompue ; ancien catalogue conservé";
+await distant(`umask 022; install -d -m 755 ${base} ${depot}`, echec);
+// Plan : les versions déjà publiées sont immuables (refus si leur contenu diffère) et ne sont pas retransférées.
+const noms = c.fichiers.map((a) => a.fichier).join(" ");
+const existants = new Map(
+  (
+    await distant(
+      `cd ${base} && for f in ${noms}; do [ -f "$f" ] && echo "$f $(stat -c %s "$f") $(sha256sum "$f" | cut -d' ' -f1)"; done; true`,
+      "Plan de publication refusé ; catalogue actuel conservé",
+    )
+  )
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => [l.split(" ")[0]!, l] as const),
+);
+const manquants: string[] = [];
+for (const a of c.fichiers) {
+  const publie = existants.get(a.fichier);
+  if (!publie) manquants.push(a.fichier);
+  else if (publie !== `${a.fichier} ${a.octets} ${a.sha256}`)
+    throw Error(`Refus de remplacer une version publiée : ${a.fichier}`);
 }
-await commande(["ssh", "vps", `umask 022; mkdir -p ~/${depot} ~/auto/outils; chmod 755 ~/auto/distributions`]);
-await commande(["scp", "-S", Bun.which("ssh") ?? "ssh", `${dossier}/manifest.json`, `vps:${depot}/manifest.json`]);
-// Ces deux sources ne contiennent ni clé privée ni configuration de compte.
-await commande([
-  "scp",
-  "-S",
-  Bun.which("ssh") ?? "ssh",
-  "scripts/distributions-vps.ts",
-  "vps:auto/outils/distributions-vps.ts",
-]);
-const plan = Bun.spawn(["ssh", "vps", `~/.local/bin/bun ~/auto/outils/distributions-vps.ts ${id} ${livraison} plan`], {
-  stdin: "ignore",
-  stdout: "pipe",
-  stderr: "inherit",
-});
-const sortie = await new Response(plan.stdout).text();
-if (await plan.exited) throw Error("Plan de publication refusé ; catalogue actuel conservé");
-const { manquants } = JSON.parse(sortie) as { manquants: string[] };
-if (
-  !Array.isArray(manquants) ||
-  manquants.some((n) => !c.fichiers.some((a) => a.fichier === n)) ||
-  new Set(manquants).size !== manquants.length
-)
-  throw Error("Plan de transfert incohérent");
 console.log(
   `Transfert : ${manquants.length} fichiers nouveaux, ${c.fichiers.length - manquants.length} fichiers déjà vérifiés`,
 );
-for (const nom of manquants)
-  await commande(["scp", "-S", Bun.which("ssh") ?? "ssh", `${dossier}/${nom}`, `vps:${depot}/${nom}`]);
-// Le validateur provient de la livraison immuable ; aucune source de cette livraison n'est modifiée.
-await commande(["ssh", "vps", `~/.local/bin/bun ~/auto/outils/distributions-vps.ts ${id} ${livraison}`]);
+for (const nom of manquants) await copier(`${dossier}/${nom}`, `${depot}/${nom}`, echec);
+await copier(`${dossier}/manifest.json`, `${depot}/manifest.json`, echec);
+// Bascule : fichiers vérifiés puis déplacés, manifeste remplacé en dernier par renommage atomique.
+const verifier = c.fichiers
+  .filter((a) => manquants.includes(a.fichier))
+  .map(
+    (a) =>
+      `[ "$(stat -c %s ${depot}/${a.fichier})" = ${a.octets} ] && [ "$(sha256sum ${depot}/${a.fichier} | cut -d' ' -f1)" = ${a.sha256} ] || { echo "Intégrité incorrecte : ${a.fichier}" >&2; exit 1; }`,
+  );
+await distant(
+  [
+    "set -e",
+    ...verifier,
+    `for f in ${manquants.join(" ")}; do mv -n ${depot}/$f ${base}/$f; done`,
+    `cd ${base} && chmod 644 ${noms}`,
+    `mv -f ${depot}/manifest.json ${base}/manifest.json && chmod 644 ${base}/manifest.json`,
+    `rm -rf ${depot}`,
+  ].join("; "),
+  echec,
+);
+console.log(`Catalogue ${c.version} publié : ${c.fichiers.length} fichiers vérifiés`);

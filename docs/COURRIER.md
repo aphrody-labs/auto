@@ -81,7 +81,7 @@ Recette réelle du premier lot (`20261024T232255Z-99038b58`) :
 
 - Connexion Google normale du propriétaire et affichage privé sans entreprise confirmés dans Chrome.
 - Console super-admin accessible ; clés « Codex » et « Automatisations » actives, expirant le 25 octobre 2027.
-  Fichier `vps:~/auto/credentials/admin-agents.env`, mode 0600, distinct des environnements API/worker/web.
+  Fichier `credentials/admin-agents.env` sous la racine des données de l’hôte, mode 0600, distinct des environnements API/worker/web.
 - Clé Codex : `/v1/admin/tenants` HTTP 200 ; `/v1/courrier/messages` HTTP 401 ; `/v1/admin/agents` HTTP 403.
 - Boîte `auto@aphrody.com` connectée par l'interface, première relève IMAP : quatre messages et pièces jointes.
 - Envoi réel depuis le formulaire Auto via Resend, sujet de contrôle « Qualification boîte unifiée Auto

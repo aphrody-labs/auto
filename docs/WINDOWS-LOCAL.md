@@ -25,11 +25,11 @@ bun scripts/windows-local.ts arreter
 
 `configurer` préserve une installation existante. `proprietaire` ne réaffecte pas implicitement un compte déjà lié. `installer` crée la tâche et le raccourci pour le compte Windows courant. `arreter` conserve les données. Le dépôt et le runtime installés doivent rester au chemin utilisé par la tâche ; réexécuter `installer` après déplacement.
 
-Le tunnel IA utilise le service déjà configuré sur `dbfr` via SSH, avec le modèle `auto-extraction`, sur la boucle locale 18798. Le lanceur réutilise un tunnel disponible et en démarre un sous le même compte Windows si nécessaire. L’accès SSH existant et le réseau privé doivent être disponibles ; les clés ne sont pas recopiées dans Auto.
+Le tunnel IA est facultatif : si `AUTO_IA_HOTE` désigne un hôte ssh (alias de `~/.ssh/config`) qui sert le modèle `auto-extraction` sur sa boucle locale 8798, le lanceur réutilise un tunnel disponible sur la boucle locale 18798 ou en démarre un sous le même compte Windows ; sans `AUTO_IA_HOTE`, aucun tunnel n’est ouvert. L’accès SSH existant et le réseau privé doivent être disponibles ; les clés ne sont pas recopiées dans Auto.
 
 ## Dossiers, classeurs et réseau
 
-La racine dédiée est `C:\Users\aphro\Documents\Auto\Arrivages`. Le préparateur crée un sous-dossier UUID par entreprise et les espaces clients, fournisseurs, devis, factures, chantiers, livraisons et commandes. Les permissions par segment d’Auto s’appliquent aux fichiers indexés et aux copies Craft.
+La racine dédiée est `Documents\Auto\Arrivages` du profil Windows (`%USERPROFILE%`). Le préparateur crée un sous-dossier UUID par entreprise et les espaces clients, fournisseurs, devis, factures, chantiers, livraisons et commandes. Les permissions par segment d’Auto s’appliquent aux fichiers indexés et aux copies Craft.
 
 Un dossier local ou UNC accessible au compte Windows courant se raccorde explicitement à une entreprise :
 

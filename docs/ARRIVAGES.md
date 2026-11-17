@@ -49,7 +49,7 @@ Pour Docker, monter le partage sur l'hôte puis ajouter aux deux services API et
 environment:
   AUTO_DOSSIERS_RACINES: '{"comptabilite":{"tenantId":"UUID_ENTREPRISE","chemin":"/mnt/comptabilite"}}'
 volumes:
-  - /srv/partages/comptabilite:/mnt/comptabilite:ro
+  - <partage monté sur l'hôte>/comptabilite:/mnt/comptabilite:ro
 ```
 
 Appliquer les migrations avec le processus existant, puis redémarrer API et worker avec le même environnement.
@@ -90,16 +90,14 @@ Ils n'établissent aucune connexion à un partage client dont le montage n'a pas
 
 ## Installation Auto sur le VPS
 
-Le parent de production est `/home/ubuntu/auto/arrivages`, celui de recette
-`/home/ubuntu/auto/recette/arrivages`. Ils sont distincts et montés dans `/mnt/arrivages` de leur environnement.
+Le parent de production est `arrivages/` sous la racine des données de l'hôte usa (`RACINE` de `scripts/hote.ts`), monté
+dans `/mnt/arrivages` de l'API (lecture seule) et du worker.
 Les fichiers se déposent par l'accès SFTP opérateur existant, dans le dossier UUID de l'entreprise et le
 sous-dossier concerné. Aucun droit n'a été ajouté au partage Samba `games`.
 
-Le modèle de base Qwen3-4B-Instruct-2507 Q4_K_M déjà présent sur `dbfr` est servi sans l'adaptateur spécialisé
-Shenron, par le conteneur `auto-extraction-ia`, limité à deux CPU et 4 Gio. Le service existant est conservé.
-Le port 8798 écoute uniquement sur la boucle locale de dbfr. Le service systemd `auto-ia-tunnel` du VPS relie
-ce port aux passerelles Docker privées : production `172.26.0.1:18799`, recette `172.27.0.1:18799`.
-Les deux règles UFW sont limitées à leurs interfaces et sous-réseaux Docker ; aucun port IA public n'est ouvert.
+Le modèle de base Qwen3 4B Q4 est servi sans adaptateur par le conteneur `auto-llm` de l'hôte usa
+(`docker/llm.Dockerfile`, llama.cpp, `AUTO_LLM_URL=http://auto-llm:8080/v1`), joint seulement par le réseau Docker
+`auto-prod` : aucun port IA public n'est ouvert.
 
 `AUTO_LLM_MODEL=auto-extraction` et `AUTO_LLM_TIMEOUT_MS=300000` tiennent compte de l'inférence CPU. La Box
 réutilise automatiquement son Ollama et `BOX_MODELE` pour les extractions ; les valeurs `AUTO_LLM_*` explicites

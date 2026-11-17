@@ -36,7 +36,7 @@ AUTO_RESEND_REPONDRE_A=auto@aphrody.com
 
 La clé dédiée `Aphrody Auto — VPS production` est créée après confirmation humaine,
 avec **Sending access** limité à `notifications.aphrody.com`. Elle est conservée hors dépôt dans
-`~/.auto/resend-production.env` (ACL privée), `vps:~/auto/credentials/resend-production.env` (0600),
+`~/.auto/resend-production.env` (ACL privée), `credentials/resend-production.env` sous la racine des données de l’hôte (0600),
 et Google Secret Manager `AUTO_RESEND_CLE_API`, version 1. Aucun secret n'est écrit dans cette documentation.
 
 API et worker de production exécutent `auto-app:resend-20261025`, image dérivée strictement de
