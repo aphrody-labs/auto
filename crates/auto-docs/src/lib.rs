@@ -8,8 +8,7 @@ use pdfcraft_fonts::pdf::Metrics;
 use std::fmt::Write;
 
 static INTER: &[u8] = include_bytes!("../../../vendor/suite/assets/pdfcraft/fonts/Inter-Regular.ttf");
-static INTER_SEMIBOLD: &[u8] =
-    include_bytes!("../../../vendor/suite/assets/pdfcraft/fonts/Inter-SemiBold.ttf");
+static INTER_SEMIBOLD: &[u8] = include_bytes!("../../../vendor/suite/assets/pdfcraft/fonts/Inter-SemiBold.ttf");
 
 const L: f64 = 595.28;
 const H: f64 = 841.89;
