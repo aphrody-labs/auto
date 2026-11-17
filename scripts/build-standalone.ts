@@ -57,6 +57,10 @@ for await (const fichier of new Bun.Glob("*.sql").scan("packages/store/migration
 for await (const fichier of new Bun.Glob("**/*").scan({ cwd: "apps/web/public", onlyFiles: true })) {
   await Bun.write(`${dossier}/public/${fichier}`, Bun.file(`apps/web/public/${fichier}`));
 }
+// Le front de production est construit ici, par le runtime d'environnement : l'exécutable embarqué ne peut ni
+// parcourir ses sources (Tailwind) ni résoudre `node_modules` au démarrage.
+const { compilerSite, ecrireSite } = await import("../apps/web/src/construction");
+await ecrireSite(`${dossier}/site`, await compilerSite());
 const fichiers: Record<string, string> = {};
 for await (const fichier of new Bun.Glob("**/*").scan({ cwd: dossier, onlyFiles: true })) {
   if (fichier === "SHA256SUMS.json") continue;

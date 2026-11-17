@@ -7,6 +7,7 @@ Bun.env.AUTO_FFI_LIB ??= Bun.fileURLToPath(
 );
 Bun.env.AUTO_MIGRATIONS_DIR ??= Bun.fileURLToPath(new URL("migrations/", dossier));
 Bun.env.AUTO_PUBLIC_DIR ??= Bun.fileURLToPath(new URL("public/", dossier));
+Bun.env.AUTO_SITE_DIR ??= Bun.fileURLToPath(new URL("site/", dossier));
 const commande = Bun.argv[2];
 if (!commande || commande === "--help" || commande === "-h") {
   console.log(

@@ -55,7 +55,34 @@ export function incorporerCss(html: string, ressources: Map<string, Ressource>):
   });
 }
 
+/** Écrit un site construit (`manifeste.json` plus un fichier par ressource) : le paquet autonome le livre tel quel. */
+export async function ecrireSite(dossier: string, site: Site): Promise<void> {
+  const types = Object.fromEntries([...site.ressources].map(([chemin, r]) => [chemin, r.type]));
+  await Bun.write(`${dossier}/manifeste.json`, JSON.stringify({ pages: site.pages, types }));
+  for (const [chemin, r] of site.ressources) await Bun.write(`${dossier}/fichiers${chemin}`, r.corps);
+}
+
+async function lireSite(dossier: string): Promise<Site> {
+  const { pages, types } = (await Bun.file(`${dossier}/manifeste.json`).json()) as {
+    pages: Site["pages"];
+    types: Record<string, string>;
+  };
+  const ressources = new Map<string, Ressource>();
+  for (const [chemin, type] of Object.entries(types))
+    ressources.set(chemin, { corps: await Bun.file(`${dossier}/fichiers${chemin}`).bytes(), type });
+  return { pages, ressources };
+}
+
+/**
+ * Le site de production : lu dans `AUTO_SITE_DIR` s'il y est (paquet autonome : l'exécutable embarqué ne peut ni
+ * parcourir ses sources ni résoudre `node_modules`), sinon construit ici.
+ */
 export async function construireSite(): Promise<Site> {
+  if (Bun.env.AUTO_SITE_DIR) return lireSite(Bun.env.AUTO_SITE_DIR);
+  return compilerSite();
+}
+
+export async function compilerSite(): Promise<Site> {
   const dossier = Bun.fileURLToPath(new URL("../public/", import.meta.url));
   // Même greffon que bunfig `[serve.static]` ; chargé dynamiquement pour que `bun check` ne vérifie pas ses sources.
   const paquet = "@aphrody/bun-plugin-tailwind";

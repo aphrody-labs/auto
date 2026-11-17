@@ -101,13 +101,15 @@ const binaire = Bun.env.AUTO_STANDALONE;
             const capture = new Bun.Glob("*.webp").scanSync({ cwd: dossierPublic }).next().value;
             expect(capture).toBeDefined();
             expect((await fetch(`http://127.0.0.1:${port}/img/${capture}`)).status).toBe(200);
-            const css = [...html.matchAll(/href="([^"]+\.css)"/g)].map((m) => m[1]!);
-            expect(css.length).toBeGreaterThan(0);
-            for (const chemin of css) {
-              const feuille = await fetch(new URL(chemin, `http://127.0.0.1:${port}`));
+            // La CSS de l'application est incorporée dans la page (construction.tsx) ; les feuilles liées sont servies.
+            const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]!);
+            for (const m of html.matchAll(/href="([^"]+\.css)"/g)) {
+              const feuille = await fetch(new URL(m[1]!, `http://127.0.0.1:${port}`));
               expect(feuille.status).toBe(200);
-              expect(await feuille.text()).not.toContain("@theme");
+              css.push(await feuille.text());
             }
+            expect(css.length).toBeGreaterThan(0);
+            for (const feuille of css) expect(feuille).not.toContain("@theme");
           }
         } finally {
           serveur.kill();
