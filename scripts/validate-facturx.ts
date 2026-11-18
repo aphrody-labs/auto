@@ -33,7 +33,7 @@ if (!(await Bun.file(xsd).exists())) {
 }
 
 const out = `${root}.cache/cii-out`;
-await $`sh ${`${root}scripts/cargo.sh`} run -q -p auto-facturx --example echantillons -- /w/.cache/cii-out`;
+await $`${process.execPath} ${`${root}scripts/cargo.ts`} run -q -p auto-facturx --example echantillons -- /w/.cache/cii-out`;
 const xmls = Array.from(new Bun.Glob("*.xml").scanSync(out), (f) => `${out}/${f}`).sort();
 const r =
   await $`bun uv run -q --with lxml --with saxonche ${`${root}tools/validate_cii.py`} ${xsd} ${xslt} ${xmls}`.nothrow();

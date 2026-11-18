@@ -76,6 +76,7 @@ jobs:
           bun-version: canary
       - run: bun --version
       - run: bun install --frozen-lockfile
+      - run: bun run craft:web
       # Base de test : branche Neon éphémère de la production (expire en 24 h, supprimée en fin de job) quand
       # le secret NEON_API_KEY est disponible ; sinon le service postgres ci-dessus (forks, Dependabot).
       - name: Base de test

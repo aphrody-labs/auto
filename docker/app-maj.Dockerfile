@@ -7,7 +7,8 @@ RUN rm -rf apps packages
 COPY package.json bun.lock bunfig.toml tsconfig.json ./
 COPY apps apps
 COPY packages packages
-RUN bun install --frozen-lockfile --production
+COPY scripts/craft-web.ts scripts/craft-web.ts
+RUN bun install --frozen-lockfile --production && bun scripts/craft-web.ts
 # hadolint ignore=DL3018
 RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-fra
 # Dossier personnel inscriptible (profil de Chromium, caches) : /app reste en lecture seule pour `auto`.

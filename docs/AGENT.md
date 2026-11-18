@@ -21,7 +21,7 @@ anomalies restantes enregistrées) ou la rejeter (définitif).
 OCR par défaut (`ocrParDefaut`) : couche texte du PDF par `pdftotext` (poppler ou xpdf), sinon OCR
 d'image par `aphrody-ocr <fichier>`, sinon `pdftoppm` + `tesseract -l fra`. Chaque outil n'est utilisé
 que s'il est trouvé dans le `PATH`. Sur le poste de dev (2026-10-22) : seul `pdftotext` (xpdf 4.06, Git
-for Windows) est présent ; ni `aphrody-ocr` (suite non clonée dans `vendor/`) ni `tesseract`. Un PDF
+for Windows) est présent ; ni `aphrody-ocr` ni `tesseract`. Un PDF
 scanné y part donc en « à vérifier ».
 
 ### API

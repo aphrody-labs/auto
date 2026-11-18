@@ -366,9 +366,7 @@ test("fichiers natifs : deux PDF générés fusionnés, texte extrait, gabarit W
 
 test("caviardage, signature PAdES et présentation natifs", async () => {
   const { session } = await entreprise();
-  const p12 = await Bun.file(
-    new URL("../../../vendor/suite/crates/pdfcraft-sign/tests/data/rsa-aes.p12", import.meta.url),
-  ).bytes();
+  const p12 = await Bun.file(new URL("../../../crates/auto-fichiers/tests/data/rsa-aes.p12", import.meta.url)).bytes();
   await api("/v1/secrets", session, { nom: "certificat", valeur: p12.toBase64() });
   await api("/v1/secrets", session, { nom: "certificat_mdp", valeur: "test" });
   const definition = manuel(

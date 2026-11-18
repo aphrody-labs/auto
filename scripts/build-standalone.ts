@@ -16,15 +16,19 @@ if (!(await Bun.file(sourceNative).exists())) throw new Error(`Construire d’ab
 const plateformeHote = process.platform === "win32" ? "windows-x64" : process.platform === "linux" ? "linux-x64" : null;
 if (cible !== plateformeHote || process.arch !== "x64")
   throw new Error("Construire ce paquet sur sa plateforme cible pour qualifier le runtime embarqué et ses notices");
-// La notice est le LICENSE.md de la révision du runtime : copie versionnée si elle existe, sinon celle des sources
-// (un runtime du canal canary change de révision chaque jour).
-const noticeVersionnee = Bun.file(`licenses/bun/${Bun.revision.slice(0, 12)}/LICENSE.md`);
-const noticeRuntime = (await noticeVersionnee.exists())
-  ? await noticeVersionnee.text()
-  : await fetch(`https://raw.githubusercontent.com/aphrody-labs/bun/${Bun.revision}/LICENSE.md`).then((r) => {
+// Notice du runtime depuis les sources exactes de la révision active, mise en cache dans .cache/licenses/bun.
+const revCourte = Bun.revision.slice(0, 12);
+const noticeCache = Bun.file(`.cache/licenses/bun/${revCourte}/LICENSE.md`);
+const noticeRuntime = (await noticeCache.exists())
+  ? await noticeCache.text()
+  : await fetch(`https://raw.githubusercontent.com/aphrody-labs/bun/${Bun.revision}/LICENSE.md`).then(async (r) => {
       if (!r.ok) throw new Error(`Notice du runtime ${Bun.revision} non qualifiée (HTTP ${r.status})`);
-      return r.text();
+      const texte = await r.text();
+      await Bun.write(`.cache/licenses/bun/${revCourte}/LICENSE.md`, texte);
+      return texte;
     });
+const { hydraterDepuisR2 } = await import("./craft-web");
+await hydraterDepuisR2();
 
 const resultat = await Bun.build({
   entrypoints: ["apps/standalone/src/index.ts"],

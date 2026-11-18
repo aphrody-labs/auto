@@ -1,28 +1,28 @@
 // Qualification publique explicite : compte QA privé obligatoire, aucune émission de facture.
-import { strict as assert } from "node:assert";
+import { expect } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { chrome } from "./support";
 const fichier = join(homedir(), ".auto/qa-parcours-auto.json"),
   q = await Bun.file(fichier).json();
-assert.match(q.email, /@example\.test$/);
-assert.match(q.moi.tenantId, /^[a-f0-9-]{36}$/);
+expect(q.email).toMatch(/@example\.test$/);
+expect(q.moi.tenantId).toMatch(/^[a-f0-9-]{36}$/);
 const base = "https://auto.aphrody.com";
 async function api(path: string) {
   const r = await fetch(base + path, { headers: { authorization: "Bearer " + q.session } });
   const j = await r.json();
-  assert.equal(r.status, 200, JSON.stringify(j));
+  expect(r.status).toBe(200);
   return j;
 }
 const indexes = await api("/v1/fichiers-indexes");
 const f = indexes.find((f: any) => f.nom === "devis-qa-parcours.docx");
-assert.ok(f?.devisId);
+expect(f?.devisId).toBeTruthy();
 q.indexId = f.id;
 q.devisInitialId = f.devisId;
 const initial = (await api("/v1/devis-recus")).find((d: any) => d.id === f.devisId);
-assert.deepEqual(initial.anomalies, []);
-assert.equal(initial.data.totaux.ttcCents, 60000);
+expect(initial.anomalies).toEqual([]);
+expect(initial.data.totaux.ttcCents).toBe(60000);
 console.log("IMPORT_IA_INITIAL_OK", f.id, initial.id, 60000);
 const browser = await chromium.launch({ executablePath: chrome()! });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "fr-FR" });
@@ -40,7 +40,7 @@ try {
   await page.getByText("Prêt à travailler", { exact: false }).waitFor({ timeout: 90000 });
   await page.waitForTimeout(1500);
   const frame = page.frames().find((f) => f.url().includes("/craft/word/"))!;
-  assert.ok(frame);
+  expect(frame).toBeTruthy();
   await frame.locator("canvas").click({ position: { x: 330, y: 300 } });
   await page.keyboard.press("Control+Home");
   await page.keyboard.press("Control+a");
@@ -68,9 +68,9 @@ try {
     if (modifie.document.revision >= 2) break;
     await page.waitForTimeout(500);
   }
-  assert.ok(modifie.document.revision >= 2);
-  assert.ok(modifie.inspection.extrait.includes("300,00 EUR"));
-  assert.ok(!modifie.inspection.extrait.includes("250,00 EUR"));
+  expect(modifie.document.revision).toBeGreaterThanOrEqual(2);
+  expect(modifie.inspection.extrait).toContain("300,00 EUR");
+  expect(modifie.inspection.extrait).not.toContain("250,00 EUR");
   console.log("CRAFT_SAUVEGARDE_OK", q.atelierId, modifie.document.revision);
   await page.screenshot({ path: ".cache/parcours-reel-craft.png" });
   const reponse = page.waitForResponse((r) => r.url().endsWith("/extraire-devis") && r.request().method() === "POST", {
@@ -79,9 +79,9 @@ try {
   await page.getByRole("button", { name: "Extraire ce devis", exact: true }).click();
   const r = await reponse;
   const extraction = await r.json();
-  assert.equal(r.status(), 200, JSON.stringify(extraction));
-  assert.deepEqual(extraction.devis.anomalies, []);
-  assert.equal(extraction.devis.data.totaux.ttcCents, 72000);
+  expect(r.status()).toBe(200);
+  expect(extraction.devis.anomalies).toEqual([]);
+  expect(extraction.devis.data.totaux.ttcCents).toBe(72000);
   q.devisModifieId = extraction.devis.id;
   await Bun.write(fichier, JSON.stringify(q, null, 2));
   console.log("IA_VERSION_MODIFIEE_OK", q.devisModifieId, 72000);
@@ -98,20 +98,20 @@ try {
   await page.getByRole("heading", { name: "Facture (brouillon)", exact: true }).waitFor();
   q.factureId = new URL(page.url()).pathname.split("/").at(-1);
   const facture = await api("/v1/documents/" + q.factureId);
-  assert.equal(facture.type, "facture");
-  assert.equal(facture.statut, "brouillon");
-  assert.equal(facture.numero, null);
-  assert.equal(facture.ttcCents, 72000);
-  assert.equal(facture.data.lignes[0].prixUnitaireHtCents, 30000);
+  expect(facture.type).toBe("facture");
+  expect(facture.statut).toBe("brouillon");
+  expect(facture.numero).toBeNull();
+  expect(facture.ttcCents).toBe(72000);
+  expect(facture.data.lignes[0].prixUnitaireHtCents).toBe(30000);
   await Bun.write(fichier, JSON.stringify(q, null, 2));
   console.log("FACTURE_BROUILLON_OK", q.factureId, 72000);
   await page.screenshot({ path: ".cache/parcours-reel-facture.png" });
   for (const width of [375, 768]) {
     await page.setViewportSize({ width, height: 1000 });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await page.screenshot({ path: ".cache/parcours-reel-facture-" + width + ".png" });
   }
-  assert.deepEqual(erreurs, []);
+  expect(erreurs).toEqual([]);
   console.log(
     "PARCOURS_REEL_REUSSI",
     JSON.stringify({

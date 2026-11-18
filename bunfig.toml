@@ -1,6 +1,6 @@
 [test]
 root = "."
-pathIgnorePatterns = ["vendor/**", "target/**", ".claude/**"]
+pathIgnorePatterns = ["target/**", ".claude/**"]
 
 # HTML importés par Bun.serve (apps/web) : Tailwind v4 sur le moteur Oxide, preset Material 3.
 [serve.static]

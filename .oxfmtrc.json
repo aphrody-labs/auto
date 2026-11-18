@@ -1,7 +1,6 @@
 {
   "printWidth": 120,
   "ignorePatterns": [
-    "vendor/**",
     "target/**",
     "data/**",
     ".cache/**",

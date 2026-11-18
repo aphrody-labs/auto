@@ -2,9 +2,9 @@
 
 ## Environnement
 
-- Runtime [Aphrody](https://aphrody.app) (fork de Bun) : `bun check`, `bun lint` et `bun fmt` sont natifs.
+- Runtime [Aphrody](https://aphrody.app) (fork de Bun 1.4.5) : `bun check`, `bun lint` et `bun fmt` sont natifs.
 - Postgres de dev : `docker compose up -d postgres` (port 5433), puis `bun run migrate`.
-- Rust : compilé et testé dans le conteneur Linux (`scripts/cargo.sh`).
+- Rust : compilé et testé dans le conteneur Linux (`bun scripts/cargo.ts`).
 
 ## Règles
 

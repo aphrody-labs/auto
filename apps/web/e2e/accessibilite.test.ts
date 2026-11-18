@@ -2,30 +2,13 @@
 // fond réellement peint (WCAG 1.4.3), contrôles sans nom, champs sans libellé, images sans texte de
 // remplacement et défilement horizontal. Thèmes clair et sombre, 375 et 1440 px de large.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { testDb, type Sql } from "@auto/store";
 import { chromium, type Browser } from "playwright-core";
 import { creerApp } from "@auto/api/app";
 import { cookieSession } from "@auto/tenancy";
 import { demarrerWeb } from "../src/serveur";
 import { auditer } from "./audit";
-
-function chrome(): string | null {
-  if (Bun.env.AUTO_CHROME) return Bun.env.AUTO_CHROME;
-  const racine =
-    Bun.env.PLAYWRIGHT_BROWSERS_PATH ??
-    join(Bun.env.LOCALAPPDATA ?? join(Bun.env.HOME ?? "", ".cache"), "ms-playwright");
-  for (const m of [
-    "chromium_headless_shell-*/chrome-headless-shell-win64/chrome-headless-shell.exe",
-    "chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell",
-    "chromium-*/chrome-win64/chrome.exe",
-    "chromium-*/chrome-linux64/chrome",
-  ])
-    for (const f of existsSync(racine) ? new Bun.Glob(m).scanSync({ cwd: racine, onlyFiles: true }) : [])
-      return join(racine, f);
-  return null;
-}
+import { chrome } from "./support";
 
 const executable = chrome();
 let sql: Sql;

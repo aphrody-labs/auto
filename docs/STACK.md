@@ -43,9 +43,9 @@ d'entreprise et non des composants d'interface : aucune bibliothèque ne les rem
 
 Chaque étape est livrée seule, avec ses tests de bout en bout verts.
 
-## Fonctions natives du fork Bun OS, vérifiées sur ce poste (2026-10-23)
+## Fonctions natives du fork Bun OS, vérifiées sur ce poste (2026-11-18)
 
-Binaire `bun` 1.4.6-canary.1 (169d8c5ea), Windows x64. Catalogue : `docs/runtime/fork-features.mdx` du dépôt Bun.
+Binaire `bun` 1.4.5, Windows x64. Catalogue : `docs/runtime/fork-features.mdx` du dépôt Bun.
 
 | Fonction                       | État        | Preuve et usage                                                                                                                                                                                                                                                       |
 | ------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

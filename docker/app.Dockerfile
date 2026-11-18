@@ -1,5 +1,5 @@
 # Images de production d'auto, toutes sur Alpine (politique conteneurs : jamais Debian ni Ubuntu).
-# Contexte : racine du dépôt ; la suite Rust est vendorisée dans vendor/suite.
+# Contexte : racine du dépôt ; la suite Rust vient de crates.io et GitHub, les éditeurs Craft WASM de R2.
 #
 #   docker build --target precompiled -t auto-app:<version> .   API et worker, natif déjà construit (native/)
 #   docker build --target web         -t auto-web:<version> .   front, sans Chromium, OCR ni natif
@@ -8,15 +8,14 @@
 #
 # Le natif livré vient de `ay build -t linux-musl --release --dylib -- -p auto-ffi`, copié dans native/ (cdylib musl).
 
-ARG BUN_IMAGE=oven/bun:1.4.4-alpine
+ARG BUN_IMAGE=oven/bun:1.4.5-alpine
 
 FROM rust:1.99-alpine AS natif
 # hadolint ignore=DL3018
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev git
 WORKDIR /w
 COPY Cargo.toml Cargo.lock rustfmt.toml ./
 COPY crates crates
-COPY vendor/suite vendor/suite
 # cdylib sur musl : sans -crt-static, cargo abandonne le type cdylib (`--dylib` de ay build).
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
@@ -39,7 +38,8 @@ WORKDIR /app
 COPY package.json bun.lock bunfig.toml tsconfig.json ./
 COPY apps apps
 COPY packages packages
-RUN bun install --frozen-lockfile --production && mkdir -p /home/auto && chown auto /home/auto
+COPY scripts/craft-web.ts scripts/craft-web.ts
+RUN bun install --frozen-lockfile --production && bun scripts/craft-web.ts && mkdir -p /home/auto && chown auto /home/auto
 ENV HOME=/home/auto NODE_ENV=production PORT=3001
 USER 10001
 EXPOSE 3001
@@ -57,7 +57,8 @@ WORKDIR /app
 COPY package.json bun.lock bunfig.toml tsconfig.json ./
 COPY apps apps
 COPY packages packages
-RUN bun install --frozen-lockfile --production
+COPY scripts/craft-web.ts scripts/craft-web.ts
+RUN bun install --frozen-lockfile --production && bun scripts/craft-web.ts
 # Dossier personnel inscriptible (profil de Chromium, caches) : /app reste en lecture seule pour `auto`.
 RUN mkdir -p /home/auto && chown auto /home/auto
 ENV HOME=/home/auto

@@ -17,5 +17,5 @@ var/
 !.env.example
 !.env.*.example
 .neon
-# Test fixtures: keys and certificates made for the signature tests (not secrets).
-!/vendor/suite/crates/pdfcraft-sign/tests/data/*
+# Hydraté à la demande depuis Cloudflare R2 via `bun run craft:web` (aucun binaire WASM dans Git).
+/apps/web/public/craft/

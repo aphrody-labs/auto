@@ -1,1 +1,0 @@
-import init from "./gridcraft_web.js"; await init({ module_or_path: "./gridcraft_web_bg.wasm" });

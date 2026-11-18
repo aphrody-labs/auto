@@ -52,10 +52,10 @@ async function etat() {
   console.log(`${URL_PUBLIQUE}/health : ${(await sonde()) ? "ok" : "KO"}`);
 }
 
-/** Empreinte de ce qui compose la bibliothèque native (crates, verrou Cargo, suite vendorisée épinglée). */
+/** Empreinte de ce qui compose la bibliothèque native (crates et verrou Cargo, dépendances publiées sur crates.io/GitHub). */
 async function empreinteNatif() {
   const suivis =
-    await $`git ls-files --cached --others --exclude-standard -- Cargo.toml Cargo.lock crates vendor/suite docker/app.Dockerfile .dockerignore`.text();
+    await $`git ls-files --cached --others --exclude-standard -- Cargo.toml Cargo.lock crates docker/app.Dockerfile .dockerignore`.text();
   return (await empreinteFichiers(suivis.trim().split(/\r?\n/).filter(Boolean))).slice(0, 16);
 }
 
@@ -90,7 +90,7 @@ async function deployerComplet(natif: string) {
  * `auto-app:base` qui contient déjà la bibliothèque native (docker/app-maj.Dockerfile).
  */
 async function deployerRapide() {
-  await $`tar czf - --exclude=node_modules --exclude=dist --exclude=target --exclude=gen package.json bun.lock bunfig.toml tsconfig.json apps packages docker/app-maj.Dockerfile | ssh -o BatchMode=yes ${HOTE} "rm -rf ${RACINE}/src && mkdir -p ${RACINE}/src && tar xzf - -C ${RACINE}/src"`;
+  await $`tar czf - --exclude=node_modules --exclude=dist --exclude=target --exclude=gen --exclude=apps/web/public/craft package.json bun.lock bunfig.toml tsconfig.json apps packages scripts/craft-web.ts docker/app-maj.Dockerfile | ssh -o BatchMode=yes ${HOTE} "rm -rf ${RACINE}/src && mkdir -p ${RACINE}/src && tar xzf - -C ${RACINE}/src"`;
   await distant(`docker build -q -f ${RACINE}/src/docker/app-maj.Dockerfile -t auto-app:dev ${RACINE}/src >/dev/null`);
 }
 

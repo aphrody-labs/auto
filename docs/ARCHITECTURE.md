@@ -14,7 +14,7 @@
 | Ingestion, agent | Factures reçues (Factur-X, OCR + LLM), CLI `auto agent` et `auto mcp` ([AGENT.md](AGENT.md))                              | `packages/ingest`, `packages/agent`, `apps/cli`, `apps/plugin`, `packages/services/src/ingest.ts` |
 | Automatisation   | n8n : workflows sur événements signés, rappels de l'API par jeton                                                         | `infra/n8n`, `apps/api/src/evenements.ts`                                                         |
 | PA               | Contrat `Plateforme`, adaptateurs `mock` et B2Brouter, chiffrement                                                        | `packages/pa`, `apps/api/src/modules/pa.ts`                                                       |
-| Suite Aphrody    | pdfcraft (cos, preflight, fonts, model, create)                                                                           | `vendor/suite` (clone partiel)                                                                    |
+| Suite Aphrody    | pdfcraft, gridcraft, wordcraft, deckcraft, aphrody-rag-core                                                               | crates.io et dépôts GitHub `storytold/*`                                                          |
 
 Le TypeScript porte le SaaS (tenants, droits, état, API). Le Rust porte les formats et la conformité,
 sous forme de fonctions pures sans état ni notion de tenant.
@@ -92,13 +92,12 @@ désactive les tâches périodiques d'un worker (les autres continuent de consom
 
 ## Décisions
 
-- **Suite Aphrody vendorisée.** Le dépôt amont `bun-distribution` n'existe plus : les crates utilisés
-  (pdfcraft, gridcraft, wordcraft, deckcraft, aphrody-rag-core, hayro et lopdf corrigés) et leur fermeture
-  `path` sont versionnés dans `vendor/suite`, hors workspace. Un correctif se fait directement là.
-- **Rust en conteneur.** `scripts/cargo.sh` compile dans `docker/rust.Dockerfile` (Linux, cible de
+- **Suite Aphrody publiée.** Les crates utilisés (`pdfcraft`, `gridcraft`, `wordcraft`, `deckcraft`, `aphrody-rag-core`)
+  proviennent directement de crates.io et des dépôts GitHub `storytold/*` épinglés dans `Cargo.toml` / `Cargo.lock`.
+- **Rust en conteneur.** `bun scripts/cargo.ts` compile dans `docker/rust.Dockerfile` (Linux, cible de
   production). La bibliothèque Windows du poste de dev est obtenue par compilation croisée MinGW
   (`bun run build:native`), la chaîne MSVC locale étant incomplète.
-- **Formatage.** `cargo fmt` sans `--all` (sinon il reformate les crates de `vendor/`) ;
+- **Formatage.** `cargo fmt` sur le workspace (`crates/`);
   `bun fmt` et `bun lint` limités à `apps packages scripts docs`.
 - **Automatisation par n8n.** L'API publie `document.emis`, `document.statut`, `paiement.enregistre`,
   `absence.demandee` et `absence.decidee` dans la transaction (outbox), livrés par le worker en webhook

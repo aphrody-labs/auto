@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { fileURLToPath } from "node:url";
 import { PLANS } from "@auto/billing";
 import { palettes } from "@auto/ui";
 import { demarrerWeb } from "./serveur";
@@ -263,7 +262,9 @@ test("rapports CSP : une ligne réduite par violation, sans données personnelle
 });
 
 test("captures de la vitrine : /img/*.webp servi en image, autres chemins refusés", async () => {
-  const noms = [...new Bun.Glob("*.webp").scanSync({ cwd: fileURLToPath(new URL("../public/img", import.meta.url)) })];
+  const noms = [
+    ...new Bun.Glob("*.webp").scanSync({ cwd: Bun.fileURLToPath(new URL("../public/img", import.meta.url)) }),
+  ];
   expect(noms.length).toBeGreaterThanOrEqual(10);
   const r = await fetch(new URL(`/img/${noms[0]}`, web.url));
   expect(r.status).toBe(200);

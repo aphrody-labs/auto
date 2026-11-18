@@ -1,5 +1,5 @@
 // Qualification Windows locale explicite ; compte et fichiers de contrôle isolés.
-import { strict as assert } from "node:assert";
+import { expect } from "bun:test";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { chrome } from "./support";
@@ -25,7 +25,7 @@ else {
       },
     }),
   });
-  assert.equal(r.status, 201);
+  expect(r.status).toBe(201);
   const data = await r.json();
   const kv = r.headers
       .getSetCookie()
@@ -42,7 +42,7 @@ async function api(path: string, body?: unknown) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const j = await r.json();
-  assert.ok(r.ok, JSON.stringify(j));
+  expect(r.ok).toBe(true);
   return j;
 }
 const p = Bun.spawn([process.execPath, "scripts/windows-local.ts", "preparer"], {
@@ -51,7 +51,7 @@ const p = Bun.spawn([process.execPath, "scripts/windows-local.ts", "preparer"], 
   stderr: "inherit",
   windowsHide: true,
 });
-assert.equal(await p.exited, 0);
+expect(await p.exited).toBe(0);
 const conf = JSON.parse((await Bun.secrets.get({ service, name: "instance" }))!);
 const original = ecrireXlsx({
   feuilles: [{ nom: "Feuille 1", colonnes: [{ titre: "Valeur" }, { titre: "Montant" }], lignes: [[2, 3]] }],
@@ -60,8 +60,8 @@ const fichier = join(conf.dossiers, q.tenantId, "fournisseurs/documents", "contr
 await Bun.write(fichier, original);
 const sources = await api("/v1/sources-fichiers"),
   source = sources.find((s: any) => s.sousDossier === "fournisseurs/documents");
-assert.ok(source);
-assert.deepEqual((await api("/v1/sources-fichiers/" + source.id + "/synchroniser", {})).erreurs, []);
+expect(source).toBeTruthy();
+expect((await api("/v1/sources-fichiers/" + source.id + "/synchroniser", {})).erreurs).toEqual([]);
 const b = await chromium.launch({ executablePath: chrome()! });
 try {
   const c = await b.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -92,10 +92,10 @@ try {
     if (d.document.revision >= 2) break;
     await page.waitForTimeout(500);
   }
-  assert.equal(d.document.revision, 2);
-  assert.ok(d.inspection.feuilles[0].apercu.flat().includes(42));
-  assert.deepEqual(await Bun.file(fichier).bytes(), original);
-  assert.deepEqual(erreurs, []);
+  expect(d.document.revision).toBe(2);
+  expect(d.inspection.feuilles[0].apercu.flat().includes(42)).toBe(true);
+  expect(await Bun.file(fichier).bytes()).toEqual(original);
+  expect(erreurs).toEqual([]);
   await page.screenshot({ path: ".cache/windows-excel-local.png" });
   console.log(
     "WINDOWS_EXCEL_REEL_OK",

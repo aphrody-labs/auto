@@ -3,14 +3,13 @@
 // Usage : bun apps/web/scripts/vitrine.ts  →  apps/web/public/img/<nom>.webp et <nom>-sombre.webp
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { testDb, type Sql } from "@auto/store";
 import { chromium } from "playwright-core";
 import { creerApp } from "@auto/api/app";
 import { cookieSession } from "@auto/tenancy";
 import { demarrerWeb } from "../src/serveur";
 
-const SORTIE = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "img");
+const SORTIE = join(dirname(Bun.fileURLToPath(import.meta.url)), "..", "public", "img");
 const MDP = "un mot de passe très long";
 const SIRET = "73282932000074";
 

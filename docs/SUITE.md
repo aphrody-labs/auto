@@ -34,9 +34,8 @@ API lues dans les sources du commit épinglé (2026-10-23) :
 | Vérification        | `pdfcraft_sign::signatures(&Document, &[u8], &TrustStore)` → `SignatureInfo` (`status`, `modification`, `details`) ; `x509::load_certificates` (PEM/DER)       |
 | Présentation        | `deckcraft_model::defaults::{new_presentation, new_slide, layout_of_kind}`, `deckcraft_pptx::export`/`import`, `deckcraft_pdf::export(&p, &PdfOptions)`        |
 
-`pdfcraft-render` s'appuie sur les copies corrigées de hayro, hayro-interpret, hayro-syntax, hayro-jbig2 et lopdf
-(`apps/pdfcraft/vendor`, API absentes de crates.io), renommées `aphrody-hayro*` et `aphrody-lopdf` : elles sont
-vendorisées dans `vendor/suite/apps/pdfcraft/vendor` et référencées directement en `path`.
+`pdfcraft-render` s'appuie sur les forks `hayro`, `hayro-interpret`, `hayro-syntax`, `hayro-jbig2` et `lopdf`
+fournis directement via `[patch.crates-io]` depuis `https://github.com/storytold/pdfcraft` (tag `v0.9.0`).
 
 Taille de la bibliothèque native (release, strip) : Linux 4,41 Mo → 24,27 Mo, Windows (MinGW) 12,50 Mo → 39,48 Mo.
 Sans `wordcraft-pdf` (mesuré) : Linux 12,90 Mo ; l'export DOCX → PDF (mise en page, krilla, codecs d'image, polices
@@ -71,8 +70,7 @@ nœud IA de vision.
 
 ## Base de connaissances (`crates/auto-connaissance`)
 
-Le paquet npm `@aphrody/rag-core@1.4.4` ne s'installe pas (il dépend de `@aphrody/paths@1.4.4`, non publiée) : la crate
-`aphrody-rag-core` (1.4.4) est prise au commit épinglé, sans la fonctionnalité `oxc` (découpeur JS/TS inutile ici).
+`aphrody-rag-core` (`=1.4.7`, publiée sur crates.io) sans la fonctionnalité `oxc` (découpeur JS/TS inutile ici).
 API lues dans les sources :
 
 | Besoin      | Appel                                                                                                                                                                   |
@@ -96,6 +94,6 @@ dépendances non optionnelles de la crate).
 
 ## Consommation par le workspace Cargo
 
-Le dépôt amont `bun-distribution` n'existe plus. Les crates racines et la fermeture de leurs dépendances `path` sont versionnés dans `vendor/suite` (hors workspace, sans héritage `workspace = true`). Le workspace référence ces crates en `path`.
+Le workspace `Cargo.toml` consomme directement les versions publiées sur crates.io (`aphrody-rag-core`) et les tags GitHub officiels `storytold/{deckcraft,gridcraft,pdfcraft,wordcraft}` (sans aucune copie `vendor/suite` dans le dépôt).
 
-Le Rust se compile et se teste dans un conteneur Linux (`scripts/cargo.sh`, image `docker/rust.Dockerfile`) : c'est la cible de production, et la chaîne MSVC locale est incomplète.
+Le Rust se compile et se teste dans un conteneur Linux (`bun scripts/cargo.ts`, image `docker/rust.Dockerfile`) : c'est la cible de production, et la chaîne MSVC locale est incomplète.

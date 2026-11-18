@@ -10,14 +10,15 @@ Dans l’éditeur, **Enregistrer** ou Ctrl+S conserve une nouvelle version sur l
 
 ## Distribution WASM
 
-Les ressources sont dans `apps/web/public/craft`, avec manifeste `11f9687984d2f5ae`, WASM compressés gzip, thèmes et notices de licences. Le serveur les lit sous `AUTO_PUBLIC_DIR/craft` si cette variable est définie. Elles sont copiées dans les conteneurs et distributions autonomes ; aucun téléchargement externe n’est requis à l’ouverture.
+Les manifestes et empreintes sont dans `apps/web/craft.manifest.json` (`11f9687984d2f5ae`) ; les binaires `.wasm.gz`, thèmes et notices de licences sont publiés sur Cloudflare R2 (`open-source-website-assets.aphrody-labs.workers.dev/craft/11f9687984d2f5ae/`) et hydratés à la demande dans `apps/web/public/craft` via `bun run craft:web` (hors suivi Git). Le serveur les lit sous `AUTO_PUBLIC_DIR/craft` si cette variable est définie. Elles sont copiées dans les conteneurs et distributions autonomes ; aucun téléchargement externe n’est requis à l’ouverture.
 
 Provenance : Gridcraft et PDFcraft viennent de la distribution canonique `2026-10-24T19-44-50-429Z`. Wordcraft inclut le pont parent du checkpoint Bun OS `b83b388f77`, compilé et assemblé sur VPS par le pipeline du propriétaire. Les métadonnées et SHA-256 des contenus décompressés sont dans le manifeste.
 
-Pour réimporter une distribution qualifiée, préparer un dossier contenant `grid/`, `word/`, `pdf/` et `sources.json`, puis exécuter :
+Pour hydrater depuis R2 ou réimporter une distribution qualifiée (avec `--publier-r2` pour la pousser sur R2) :
 
 ```sh
-bun scripts/craft-web.ts chemin/vers/distribution
+bun run craft:web
+bun scripts/craft-web.ts chemin/vers/distribution --publier-r2
 ```
 
 Ne pas reformater le JavaScript généré ; les fichiers sont référencés par leur empreinte. Le bootstrap HTML est externalisé pour la CSP. Le pont vérifie exactement l’origine et la fenêtre émettrice. Les ressources publiques ne contiennent aucun document métier ; leur ouverture passe par l’API authentifiée.
@@ -26,7 +27,7 @@ Ne pas reformater le JavaScript généré ; les fichiers sont référencés par 
 
 Migration 024 : documents et révisions sous RLS par entreprise. Routes `/v1/atelier` : création/import, liste, consultation, archivage, téléchargement courant ou historique, sauvegarde optimiste, restauration, opérations natives et export Word en PDF. Les contrats figurent dans OpenAPI ; `@auto/client` expose les méthodes typées.
 
-`OperationAtelier`, partagé depuis `@auto/store`, décrit les modifications. Excel utilise `auto-sheets::modifier`, FFI `xlsx_modifier` et `modifierXlsx` : coordonnées à partir de 1, styles conservés, formules recalculées par `gridcraft-calc` vendorisé dans `vendor/suite`. Word utilise `auto-fichiers::remplacer_docx`, FFI `docx_remplacer` et `remplacerDocx` : remplacements Unicode dans paragraphes, tableaux et parties liées, attributs conservés. PDF réutilise les opérations natives existantes. Reconstruire auto-ffi avant de déployer ces routes.
+`OperationAtelier`, partagé depuis `@auto/store`, décrit les modifications. Excel utilise `auto-sheets::modifier`, FFI `xlsx_modifier` et `modifierXlsx` : coordonnées à partir de 1, styles conservés, formules recalculées par `gridcraft-calc` (`storytold/gridcraft`). Word utilise `auto-fichiers::remplacer_docx`, FFI `docx_remplacer` et `remplacerDocx` : remplacements Unicode dans paragraphes, tableaux et parties liées, attributs conservés. PDF réutilise les opérations natives existantes. Reconstruire auto-ffi avant de déployer ces routes.
 
 ## Vérifications
 

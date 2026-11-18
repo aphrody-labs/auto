@@ -4,7 +4,7 @@
 
 Le fichier `compose.yaml` reste réservé au développement : ses identifiants et ses réglages PostgreSQL sans fsync ne conviennent pas à la production.
 
-Pour une installation de production, copier `.env.production.example` vers `.env.production`, remplacer les secrets et renseigner l’URL publique. Les dépendances Rust sont vendorisées dans `vendor/suite` ; lancer :
+Pour une installation de production, copier `.env.production.example` vers `.env.production`, remplacer les secrets et renseigner l’URL publique. Les dépendances Rust viennent de crates.io et GitHub (`Cargo.lock`), et les ressources Craft WASM sont hydratées depuis Cloudflare R2 ; lancer :
 
 ```sh
 docker compose --env-file .env.production -f compose.production.yaml up -d --build
@@ -26,7 +26,7 @@ bun run build:standalone linux-x64
 
 Ajouter `--zip` produit aussi une archive complète et son empreinte SHA-256. Pour Linux, l’archive tar.gz publiée par la CI préserve les permissions d’exécution.
 
-Construire sur le système cible avec le runtime qualifié : le script refuse la compilation croisée et une révision dont la notice n’est pas présente dans `licenses/bun`. Le paquet produit dans `dist/standalone/<cible>` contient le runtime Bun dans `auto` ou `auto.exe`, la bibliothèque FFI, les migrations et `SHA256SUMS.json`. Il inclut aussi `LISEZ-MOI.txt`, `LICENSE`, `NOTICE`, `BUN-LICENSE.md` et `RUNTIME.json` avec la révision exacte et son lien source. Distribuer le dossier complet. Aucune installation de Bun ni de dépendances JavaScript n’est nécessaire sur la machine d’exécution.
+Construire sur le système cible avec le runtime qualifié : le script refuse la compilation croisée ; si la notice de la révision active n’est pas en cache dans `.cache/licenses/bun`, elle est récupérée depuis les sources `aphrody-labs/bun` sur GitHub. Le paquet produit dans `dist/standalone/<cible>` contient le runtime Bun dans `auto` ou `auto.exe`, la bibliothèque FFI, les migrations et `SHA256SUMS.json`. Il inclut aussi `LISEZ-MOI.txt`, `LICENSE`, `NOTICE`, `BUN-LICENSE.md` et `RUNTIME.json` avec la révision exacte et son lien source. Distribuer le dossier complet. Aucune installation de Bun ni de dépendances JavaScript n’est nécessaire sur la machine d’exécution.
 
 La révision d’empaquetage `r1` conserve Auto 0.2.0 et utilise des noms d’archives distincts pour préserver l’immutabilité des téléchargements. Windows embarque Aphrody Bun `169d8c5ea17b2b55a0582c475adc7123118b9623`. Linux utilise l’artefact brut `bun-linux-x64` de la préversion publique `main-runtime-633fd8a28f47`, révision `633fd8a28f47e8d29910fb0b0c3560df425bf611`, SHA-256 `c30e815700450abd93aa31ca92fcf756d719157dfae94af21a361db5eabd1ba7`. Ce choix est qualifié pour Auto ; il ne désigne pas une release stable générale de Bun. Le VPN et les autres plugins natifs optionnels ne font pas partie de ces archives serveur.
 

@@ -1,4 +1,4 @@
-import { strict as assert } from "node:assert";
+import { expect } from "bun:test";
 import { demarrerBanc, chrome } from "./support";
 
 const b = await demarrerBanc(chrome()!);
@@ -62,14 +62,14 @@ try {
       await page.keyboard.press("Control+s");
       await page.waitForTimeout(2000);
       const resultat = await b.appel("/v1/atelier/" + d.id, token);
-      assert.equal(resultat.document.revision, 2);
-      if (format === "excel") assert.equal(resultat.inspection.feuilles[0].apercu[1][0], 42);
-      else assert.equal(resultat.inspection.extrait, "Verification Craft Auto");
+      expect(resultat.document.revision).toBe(2);
+      if (format === "excel") expect(resultat.inspection.feuilles[0].apercu[1][0]).toBe(42);
+      else expect(resultat.inspection.extrait).toBe("Verification Craft Auto");
       console.log("APRES", format, JSON.stringify(resultat));
     }
     for (const width of [375, 768]) {
       await page.setViewportSize({ width, height: 900 });
-      assert.ok(await page.evaluate(() => document.body.scrollWidth <= innerWidth));
+      expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true);
       console.log(
         "LARGEUR",
         format,
@@ -79,7 +79,7 @@ try {
     }
     await page.setViewportSize({ width: 1440, height: 900 });
   }
-  assert.deepEqual(erreurs, []);
+  expect(erreurs).toEqual([]);
   console.log("ERREURS", JSON.stringify(erreurs));
   await ctx.close();
 } finally {

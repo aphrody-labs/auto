@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
-exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"
@@ -9,29 +8,28 @@ rust-version = "1.97"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-# Suite Aphrody vendorisée dans vendor/suite (amont bun-distribution disparu).
-# Sans la fonctionnalité oxc (découpeur JS/TS) : seuls les découpeurs prose et Markdown servent.
-aphrody-rag-core = { path = "vendor/suite/crates/aphrody-rag-core", default-features = false }
-deckcraft-model = { path = "vendor/suite/crates/deckcraft-model" }
-deckcraft-pdf = { path = "vendor/suite/crates/deckcraft-pdf" }
-deckcraft-pptx = { path = "vendor/suite/crates/deckcraft-pptx" }
-gridcraft-core = { path = "vendor/suite/crates/gridcraft-core" }
-gridcraft-calc = { path = "vendor/suite/crates/gridcraft-calc" }
-gridcraft-model = { path = "vendor/suite/crates/gridcraft-model" }
-gridcraft-xlsx = { path = "vendor/suite/crates/gridcraft-xlsx" }
-pdfcraft-annot = { path = "vendor/suite/crates/pdfcraft-annot" }
-pdfcraft-cos = { path = "vendor/suite/crates/pdfcraft-cos" }
-pdfcraft-create = { path = "vendor/suite/crates/pdfcraft-create" }
-pdfcraft-fonts = { path = "vendor/suite/crates/pdfcraft-fonts" }
-pdfcraft-model = { path = "vendor/suite/crates/pdfcraft-model" }
-pdfcraft-organize = { path = "vendor/suite/crates/pdfcraft-organize" }
-pdfcraft-preflight = { path = "vendor/suite/crates/pdfcraft-preflight" }
-pdfcraft-redact = { path = "vendor/suite/crates/pdfcraft-redact" }
-pdfcraft-render = { path = "vendor/suite/crates/pdfcraft-render" }
-pdfcraft-sign = { path = "vendor/suite/crates/pdfcraft-sign" }
-wordcraft-doc = { path = "vendor/suite/crates/wordcraft-doc" }
-wordcraft-docx = { path = "vendor/suite/crates/wordcraft-docx" }
-wordcraft-pdf = { path = "vendor/suite/crates/wordcraft-pdf" }
+# Crates publiés sur crates.io et GitHub (storytold/deckcraft, gridcraft, pdfcraft, wordcraft).
+aphrody-rag-core = { version = "=1.4.7", default-features = false }
+deckcraft-model = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
+deckcraft-pdf = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
+deckcraft-pptx = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
+gridcraft-core = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
+gridcraft-calc = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
+gridcraft-model = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
+gridcraft-xlsx = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
+pdfcraft-annot = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-cos = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-create = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-fonts = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-model = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-organize = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-preflight = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-redact = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-render = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+pdfcraft-sign = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+wordcraft-doc = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
+wordcraft-docx = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
+wordcraft-pdf = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -53,3 +51,11 @@ debug = "limited"
 codegen-units = 16
 split-debuginfo = "unpacked"
 debug = "limited"
+
+[patch.crates-io]
+hayro-interpret = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+hayro = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+hayro-syntax = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+hayro-jbig2 = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+lopdf = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+vello_common = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }

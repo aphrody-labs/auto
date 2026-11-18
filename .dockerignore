@@ -6,7 +6,6 @@ node_modules
 target
 dist
 data
-vendor/n8n
 **/.env
 **/.env.*
 !**/.env.example
@@ -24,6 +23,6 @@ box/donnees
 **/dist
 apps/desktop/src-tauri/gen
 apps/desktop/src-tauri/icons
-vendor/bun-distribution/.git
+apps/web/public/craft
 apps/desktop/**
 !apps/desktop/package.json

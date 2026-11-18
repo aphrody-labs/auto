@@ -36,7 +36,7 @@
     "video:studio": "bun scripts/video-lancement.ts servir",
     "video:rendre": "bun scripts/video-lancement.ts rendre",
     "video:verifier": "bun scripts/video-lancement.ts verifier",
-    "video:outils": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/video-lancement-outils.ps1",
+    "video:outils": "bun scripts/video-lancement-outils.ts",
     "video:voix": "bun scripts/video-lancement-voix.ts",
     "video:mix": "bun scripts/video-lancement-mix.ts",
     "video:tout": "bun run video:captures && bun run video:preparer && bun run video:voix && bun run video:rendre && bun run video:mix && bun run video:verifier"

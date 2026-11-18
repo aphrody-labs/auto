@@ -1,6 +1,4 @@
 # Absolute-path literals kept on purpose (format: tools/paths.ts of the ay workspace). Everything else derives its paths.
-# Vendored upstream sources, tests and examples of the Rust suite (system font directories, sample files); not edited here.
-vendor/suite/**
 # Paths inside container images and compose files (image filesystem, HOME of uid 10001, mount points), not host paths.
 docker/*.Dockerfile
 box/**

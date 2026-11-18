@@ -2,29 +2,14 @@
 // avec des totaux incohérents), l'acheteur les retrouve dans « Factures reçues » et valide celle à vérifier.
 // Capture 1280×800 écrite dans AUTO_CAPTURES (reprise par la fiche Chrome Web Store de l'extension).
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { testDb, type Sql } from "@auto/store";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { creerApp } from "@auto/api/app";
 import { demarrerWeb } from "../src/serveur";
-
-function chrome(): string | null {
-  if (Bun.env.AUTO_CHROME) return Bun.env.AUTO_CHROME;
-  const racine =
-    Bun.env.PLAYWRIGHT_BROWSERS_PATH ??
-    join(Bun.env.LOCALAPPDATA ?? join(Bun.env.HOME ?? "", ".cache"), "ms-playwright");
-  for (const m of [
-    "chromium_headless_shell-*/chrome-headless-shell-win64/chrome-headless-shell.exe",
-    "chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell",
-    "chromium-*/chrome-win64/chrome.exe",
-    "chromium-*/chrome-linux64/chrome",
-  ])
-    for (const f of existsSync(racine) ? new Bun.Glob(m).scanSync({ cwd: racine, onlyFiles: true }) : [])
-      return join(racine, f);
-  return null;
-}
+import { chrome } from "./support";
 
 const executable = chrome();
 const CAPTURES = Bun.env.AUTO_CAPTURES ?? join(tmpdir(), "auto-captures");

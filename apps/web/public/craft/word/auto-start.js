@@ -1,1 +1,0 @@
-import init from "./wordcraft_web.js"; await init({ module_or_path: "./wordcraft_web_bg.wasm" });
