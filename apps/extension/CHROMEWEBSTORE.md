@@ -1,4 +1,4 @@
-# Chrome Web Store Listing — auto : factures fournisseurs
+# Chrome Web Store Listing - auto : factures fournisseurs
 
 > Last Updated: 2026-10-22
 
