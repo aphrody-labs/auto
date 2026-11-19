@@ -160,7 +160,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "wordcraft-doc",
+ "wordcraft-doc 0.6.1",
  "wordcraft-docx",
  "wordcraft-pdf",
 ]
@@ -226,6 +226,12 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "base64ct"
@@ -518,6 +524,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "craft-pdf"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=6e03f65bf45181db77ba6229716e6624db9eb25b#6e03f65bf45181db77ba6229716e6624db9eb25b"
+dependencies = [
+ "krilla",
+ "thiserror",
+]
+
+[[package]]
+name = "craft-proof"
+version = "0.1.0"
+source = "git+https://github.com/storytold/craft-libs?rev=01315d9c92b5b0e69082d35ca56099461a1efd45#01315d9c92b5b0e69082d35ca56099461a1efd45"
+dependencies = [
+ "log",
+ "miniz_oxide 0.9.1",
+ "toml",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -1500,7 +1526,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27da593198b20eeba65caeb73c2bbeec3e53ab08fa549898312ce81c4fce5e33"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bumpalo",
  "flate2",
  "float-cmp",
@@ -1952,7 +1978,7 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "aes",
  "aws-lc-rs",
- "base64",
+ "base64 0.22.1",
  "bp256",
  "bp384",
  "cbc",
@@ -1985,7 +2011,7 @@ name = "pdfcraft-xfa"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "image",
  "pdfcraft-cos",
  "pdfcraft-fonts",
@@ -2593,6 +2619,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c187e0a369471c550af028cba56d4f4fa2a489ad28151ae95a4d340a2a8b782"
+dependencies = [
+ "serde_core",
+]
+
+[[package]]
 name = "serdect"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2863,6 +2898,45 @@ name = "tinyvec"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
+
+[[package]]
+name = "toml"
+version = "1.2.1+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5755c51863cdac711f1956baf8eb9588e060755f7d3c4c979e70ea1e1f32cd7"
+dependencies = [
+ "indexmap",
+ "serde_core",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_parser",
+ "toml_writer",
+ "winnow",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "1.1.3+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173f25c883cd2176a2d8212155638c0a60d484a9d84546d270866f40f56b6e49"
+dependencies = [
+ "serde_core",
+]
+
+[[package]]
+name = "toml_parser"
+version = "1.1.5+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baa693a8032d7e1cada7d0041e96126df243179ff061456783ac7f12bda4744c"
+dependencies = [
+ "winnow",
+]
+
+[[package]]
+name = "toml_writer"
+version = "1.2.0+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a"
 
 [[package]]
 name = "ttf-parser"
@@ -3254,6 +3328,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
+name = "winnow"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c3b93199df0ab874cdf0c6a94f0a0dc3423fe41f1cafb62b8bd7b1deb277aef"
+
+[[package]]
 name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3280,7 +3360,21 @@ dependencies = [
  "serde_json",
  "thiserror",
  "unicode-segmentation",
- "wordcraft-geom",
+ "wordcraft-geom 0.6.1",
+]
+
+[[package]]
+name = "wordcraft-doc"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
+dependencies = [
+ "base64 0.23.1",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "unicode-segmentation",
+ "wordcraft-geom 0.18.1",
 ]
 
 [[package]]
@@ -3289,7 +3383,7 @@ version = "0.6.1"
 source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
 dependencies = [
  "aes",
- "base64",
+ "base64 0.22.1",
  "cfb",
  "getrandom 0.3.4",
  "hmac",
@@ -3298,17 +3392,18 @@ dependencies = [
  "sha1",
  "sha2",
  "thiserror",
- "wordcraft-doc",
- "wordcraft-geom",
+ "wordcraft-doc 0.6.1",
+ "wordcraft-geom 0.6.1",
  "zeroize",
  "zip",
 ]
 
 [[package]]
 name = "wordcraft-fonts"
-version = "0.6.1"
-source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
 dependencies = [
+ "brotli-decompressor 5.0.3",
  "harfrust 0.13.3",
  "kurbo",
  "log",
@@ -3327,10 +3422,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "wordcraft-layout"
-version = "0.6.1"
-source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
+name = "wordcraft-geom"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
 dependencies = [
+ "image",
+ "serde",
+]
+
+[[package]]
+name = "wordcraft-layout"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
+dependencies = [
+ "craft-proof",
  "image",
  "js-sys",
  "kurbo",
@@ -3340,16 +3445,16 @@ dependencies = [
  "unicode-bidi",
  "unicode-linebreak",
  "unicode-segmentation",
- "wordcraft-doc",
+ "wordcraft-doc 0.18.1",
  "wordcraft-fonts",
- "wordcraft-geom",
- "wordcraft-proof",
+ "wordcraft-geom 0.18.1",
+ "wordcraft-metafile",
 ]
 
 [[package]]
 name = "wordcraft-metafile"
-version = "0.6.1"
-source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
 dependencies = [
  "kurbo",
  "thiserror",
@@ -3357,29 +3462,21 @@ dependencies = [
 
 [[package]]
 name = "wordcraft-pdf"
-version = "0.6.1"
-source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
 dependencies = [
+ "chrono",
+ "craft-pdf",
  "image",
  "js-sys",
- "krilla",
  "kurbo",
  "log",
  "thiserror",
- "wordcraft-doc",
+ "wordcraft-doc 0.18.1",
  "wordcraft-fonts",
- "wordcraft-geom",
+ "wordcraft-geom 0.18.1",
  "wordcraft-layout",
  "wordcraft-metafile",
-]
-
-[[package]]
-name = "wordcraft-proof"
-version = "0.6.1"
-source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
-dependencies = [
- "log",
- "miniz_oxide 0.8.9",
 ]
 
 [[package]]
