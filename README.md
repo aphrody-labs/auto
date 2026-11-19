@@ -1,5 +1,7 @@
 # Auto
 
+Core products (crates, API/architecture/compliance/deployment/SDK docs) are merged into [`aphrody-labs/ay`](https://github.com/aphrody-labs/ay) (`crates/auto-*`, `docs/imported/auto`); this repository keeps the apps and TypeScript packages, which build against the `crates/` copy until they move.
+
 Unified billing, Factur-X compliance, HR, workflow automation, and workspace software delivered as a single LTO Rust binary (`auto`), embeddable libraries (`aphrody_auto`, `auto_auth`, `auto_ffi`, `@aphrody/auto`), Cloudflare Workers edge bundle, Web UI, and 120 FPS GPUI desktop app.
 
 ## Architecture
