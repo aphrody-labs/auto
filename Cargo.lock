@@ -110,10 +110,10 @@ version = "0.0.0"
 dependencies = [
  "auto-facturx",
  "auto-modele",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-create",
  "pdfcraft-fonts",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "thiserror",
 ]
 
@@ -122,7 +122,7 @@ name = "auto-facturx"
 version = "0.0.0"
 dependencies = [
  "auto-modele",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-create",
  "pdfcraft-preflight",
  "thiserror",
@@ -152,7 +152,7 @@ dependencies = [
  "deckcraft-pdf",
  "deckcraft-pptx",
  "pdfcraft-annot",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-organize",
  "pdfcraft-redact",
  "pdfcraft-render",
@@ -1314,6 +1314,7 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "fearless_simd",
  "hayro-ccitt",
+ "image",
 ]
 
 [[package]]
@@ -1784,9 +1785,9 @@ name = "pdfcraft-annot"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "thiserror",
 ]
 
@@ -1795,7 +1796,16 @@ name = "pdfcraft-content"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
+]
+
+[[package]]
+name = "pdfcraft-content"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "hayro-syntax",
+ "pdfcraft-cos 0.21.1",
 ]
 
 [[package]]
@@ -1803,9 +1813,22 @@ name = "pdfcraft-cos"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-crypt",
- "pdfcraft-filters",
+ "pdfcraft-crypt 0.9.0",
+ "pdfcraft-filters 0.9.0",
  "thiserror",
+]
+
+[[package]]
+name = "pdfcraft-cos"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "chrono",
+ "js-sys",
+ "pdfcraft-crypt 0.21.1",
+ "pdfcraft-filters 0.21.1",
+ "thiserror",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1815,9 +1838,9 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "encoding_rs",
  "image",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "png",
  "thiserror",
  "tiff",
@@ -1837,16 +1860,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-crypt"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "aes",
+ "md-5",
+ "sha2",
+ "stringprep",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "pdfcraft-edit"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "kurbo",
  "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-content 0.9.0",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "thiserror",
  "unicode-bidi",
 ]
@@ -1861,12 +1897,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-filters"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "fax",
+ "flate2",
+ "hayro-ccitt",
+ "hayro-jbig2",
+ "thiserror",
+]
+
+[[package]]
 name = "pdfcraft-fonts"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "harfrust 0.12.0",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "skrifa 0.44.0",
  "unicode-bidi",
 ]
@@ -1876,10 +1924,10 @@ name = "pdfcraft-forms"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-content 0.9.0",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "thiserror",
 ]
 
@@ -1888,7 +1936,15 @@ name = "pdfcraft-model"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
+]
+
+[[package]]
+name = "pdfcraft-model"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "pdfcraft-cos 0.21.1",
 ]
 
 [[package]]
@@ -1896,19 +1952,20 @@ name = "pdfcraft-organize"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-content 0.9.0",
+ "pdfcraft-cos 0.9.0",
  "thiserror",
 ]
 
 [[package]]
 name = "pdfcraft-preflight"
-version = "0.9.0"
-source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
 dependencies = [
- "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-model",
+ "pdfcraft-content 0.21.1",
+ "pdfcraft-cos 0.21.1",
+ "pdfcraft-model 0.21.1",
+ "roxmltree 0.21.2",
 ]
 
 [[package]]
@@ -1917,12 +1974,12 @@ version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "pdfcraft-annot",
- "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-content 0.9.0",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-edit",
  "pdfcraft-fonts",
  "pdfcraft-forms",
- "pdfcraft-model",
+ "pdfcraft-model 0.9.0",
  "pdfcraft-xfa",
  "thiserror",
 ]
@@ -1939,7 +1996,7 @@ dependencies = [
  "kurbo",
  "log",
  "lopdf",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
  "serde",
  "thiserror",
@@ -1967,7 +2024,7 @@ dependencies = [
  "p521",
  "pbkdf2",
  "pdfcraft-annot",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
  "rc2",
  "ripemd",
@@ -1987,10 +2044,10 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "base64",
  "image",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-fonts",
  "png",
- "roxmltree",
+ "roxmltree 0.20.0",
  "sha2",
  "thiserror",
 ]
@@ -2393,6 +2450,15 @@ name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+
+[[package]]
+name = "roxmltree"
+version = "0.21.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9da7f59328b09405b181fee1018925fad50f157afb43c0c0f5c522c256dd5907"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "rsa"
