@@ -160,7 +160,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "wordcraft-doc",
+ "wordcraft-doc 0.18.1",
  "wordcraft-docx",
  "wordcraft-pdf",
 ]
@@ -226,6 +226,12 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "base64ct"
@@ -1500,7 +1506,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27da593198b20eeba65caeb73c2bbeec3e53ab08fa549898312ce81c4fce5e33"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bumpalo",
  "flate2",
  "float-cmp",
@@ -1952,7 +1958,7 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "aes",
  "aws-lc-rs",
- "base64",
+ "base64 0.22.1",
  "bp256",
  "bp384",
  "cbc",
@@ -1985,7 +1991,7 @@ name = "pdfcraft-xfa"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "image",
  "pdfcraft-cos",
  "pdfcraft-fonts",
@@ -3280,7 +3286,21 @@ dependencies = [
  "serde_json",
  "thiserror",
  "unicode-segmentation",
- "wordcraft-geom",
+ "wordcraft-geom 0.6.1",
+]
+
+[[package]]
+name = "wordcraft-doc"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
+dependencies = [
+ "base64 0.23.1",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "unicode-segmentation",
+ "wordcraft-geom 0.18.1",
 ]
 
 [[package]]
@@ -3289,7 +3309,7 @@ version = "0.6.1"
 source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
 dependencies = [
  "aes",
- "base64",
+ "base64 0.22.1",
  "cfb",
  "getrandom 0.3.4",
  "hmac",
@@ -3298,8 +3318,8 @@ dependencies = [
  "sha1",
  "sha2",
  "thiserror",
- "wordcraft-doc",
- "wordcraft-geom",
+ "wordcraft-doc 0.6.1",
+ "wordcraft-geom 0.6.1",
  "zeroize",
  "zip",
 ]
@@ -3327,6 +3347,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wordcraft-geom"
+version = "0.18.1"
+source = "git+https://github.com/storytold/wordcraft?tag=v0.18.1#079f478bd85df7bcc567e3bafa7d7219096f9c3c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "wordcraft-layout"
 version = "0.6.1"
 source = "git+https://github.com/storytold/wordcraft?tag=v0.6.1#7dfa6b0ee2aeeafec004c51fdd2ab9a697da3cc4"
@@ -3340,9 +3368,9 @@ dependencies = [
  "unicode-bidi",
  "unicode-linebreak",
  "unicode-segmentation",
- "wordcraft-doc",
+ "wordcraft-doc 0.6.1",
  "wordcraft-fonts",
- "wordcraft-geom",
+ "wordcraft-geom 0.6.1",
  "wordcraft-proof",
 ]
 
@@ -3366,9 +3394,9 @@ dependencies = [
  "kurbo",
  "log",
  "thiserror",
- "wordcraft-doc",
+ "wordcraft-doc 0.6.1",
  "wordcraft-fonts",
- "wordcraft-geom",
+ "wordcraft-geom 0.6.1",
  "wordcraft-layout",
  "wordcraft-metafile",
 ]
