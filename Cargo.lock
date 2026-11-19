@@ -110,9 +110,9 @@ version = "0.0.0"
 dependencies = [
  "auto-facturx",
  "auto-modele",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-create",
- "pdfcraft-fonts",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-model",
  "thiserror",
 ]
@@ -122,7 +122,7 @@ name = "auto-facturx"
 version = "0.0.0"
 dependencies = [
  "auto-modele",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-create",
  "pdfcraft-preflight",
  "thiserror",
@@ -152,7 +152,7 @@ dependencies = [
  "deckcraft-pdf",
  "deckcraft-pptx",
  "pdfcraft-annot",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-organize",
  "pdfcraft-redact",
  "pdfcraft-render",
@@ -792,6 +792,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "displaydoc"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
+]
+
+[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1001,6 +1012,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "835ae9d781464a79026cde387f9cbc650c9a4909d7cf7e658b127e3c35d2f35d"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "form_urlencoded"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+dependencies = [
+ "percent-encoding",
 ]
 
 [[package]]
@@ -1314,6 +1334,7 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "fearless_simd",
  "hayro-ccitt",
+ "image",
 ]
 
 [[package]]
@@ -1400,6 +1421,110 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "icu_collections"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe090a42a0d3140fed8c63263ed1fecc02422cb2f4bfe55cd8de2de1b8e105dd"
+dependencies = [
+ "displaydoc",
+ "potential_utf",
+ "utf8_iter",
+ "yoke",
+ "zerofrom",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_locale_core"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25d29b57c17c6528d0dc4c2141cfa2d08200465acb537a3909c8b9b8a4a984c0"
+dependencies = [
+ "displaydoc",
+ "litemap",
+ "tinystr",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_normalizer"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "404a3b8c486f205c87fe7f23ab6894d84a4ad76d6e4671ae1981ba7def87c599"
+dependencies = [
+ "icu_collections",
+ "icu_normalizer_data",
+ "icu_properties",
+ "icu_provider",
+ "smallvec",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_normalizer_data"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20f0088bfb7441f7a37fa0c9e20cb1e9cba1cac6b9ce8cd2a6dc44294f8e8cbc"
+
+[[package]]
+name = "icu_properties"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ea83d991c56158f7cf898bf86436c1dfe7c07ee82fe88951f2695c9f37a379f"
+dependencies = [
+ "displaydoc",
+ "icu_collections",
+ "icu_locale_core",
+ "icu_properties_data",
+ "icu_provider",
+ "zerotrie",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_properties_data"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b98f29af82d02b163fe50161388350e743bb3107cc8e8c2f7314cb505faddfcf"
+
+[[package]]
+name = "icu_provider"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413099315636c588ee8f011190b329b971a09a8fae9d157e01dcae8379468514"
+dependencies = [
+ "displaydoc",
+ "icu_locale_core",
+ "writeable",
+ "yoke",
+ "zerofrom",
+ "zerotrie",
+ "zerovec",
+]
+
+[[package]]
+name = "idna"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b0875f23caa03898994f6ddc501886a45c7d3d62d04d2d90788d47be1b1e4de"
+dependencies = [
+ "idna_adapter",
+ "smallvec",
+ "utf8_iter",
+]
+
+[[package]]
+name = "idna_adapter"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb68373c0d6620ef8105e855e7745e18b0d00d3bdb07fb532e434244cdb9a714"
+dependencies = [
+ "icu_normalizer",
+ "icu_properties",
 ]
 
 [[package]]
@@ -1553,6 +1678,12 @@ name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
+
+[[package]]
+name = "litemap"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
 name = "log"
@@ -1784,8 +1915,8 @@ name = "pdfcraft-annot"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-model",
  "thiserror",
 ]
@@ -1795,7 +1926,7 @@ name = "pdfcraft-content"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
 ]
 
 [[package]]
@@ -1803,9 +1934,22 @@ name = "pdfcraft-cos"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-crypt",
- "pdfcraft-filters",
+ "pdfcraft-crypt 0.9.0",
+ "pdfcraft-filters 0.9.0",
  "thiserror",
+]
+
+[[package]]
+name = "pdfcraft-cos"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "chrono",
+ "js-sys",
+ "pdfcraft-crypt 0.21.1",
+ "pdfcraft-filters 0.21.1",
+ "thiserror",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1815,8 +1959,8 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "encoding_rs",
  "image",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-model",
  "png",
  "thiserror",
@@ -1837,6 +1981,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-crypt"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "aes",
+ "md-5",
+ "sha2",
+ "stringprep",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "pdfcraft-edit"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
@@ -1844,8 +2001,8 @@ dependencies = [
  "kurbo",
  "pdfcraft-annot",
  "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-model",
  "thiserror",
  "unicode-bidi",
@@ -1861,12 +2018,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdfcraft-filters"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "fax",
+ "flate2",
+ "hayro-ccitt",
+ "hayro-jbig2",
+ "thiserror",
+]
+
+[[package]]
 name = "pdfcraft-fonts"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "harfrust 0.12.0",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
+ "skrifa 0.44.0",
+ "unicode-bidi",
+]
+
+[[package]]
+name = "pdfcraft-fonts"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
+dependencies = [
+ "harfrust 0.12.0",
+ "pdfcraft-cos 0.21.1",
  "skrifa 0.44.0",
  "unicode-bidi",
 ]
@@ -1877,18 +2057,23 @@ version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "pdfcraft-content",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-model",
  "thiserror",
 ]
+
+[[package]]
+name = "pdfcraft-geom"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
 
 [[package]]
 name = "pdfcraft-model"
 version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
 ]
 
 [[package]]
@@ -1897,7 +2082,7 @@ version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "thiserror",
 ]
 
@@ -1907,7 +2092,7 @@ version = "0.9.0"
 source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
 dependencies = [
  "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-model",
 ]
 
@@ -1918,9 +2103,9 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "pdfcraft-annot",
  "pdfcraft-content",
- "pdfcraft-cos",
+ "pdfcraft-cos 0.9.0",
  "pdfcraft-edit",
- "pdfcraft-fonts",
+ "pdfcraft-fonts 0.9.0",
  "pdfcraft-forms",
  "pdfcraft-model",
  "pdfcraft-xfa",
@@ -1929,8 +2114,8 @@ dependencies = [
 
 [[package]]
 name = "pdfcraft-render"
-version = "0.9.0"
-source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c557f0189559ab47cdcee057"
+version = "0.21.1"
+source = "git+https://github.com/storytold/pdfcraft?tag=v0.21.1#b503b2e62dfeec5598f344e4e287d9c9cbdb34fa"
 dependencies = [
  "bytemuck",
  "getrandom 0.4.3",
@@ -1939,10 +2124,14 @@ dependencies = [
  "kurbo",
  "log",
  "lopdf",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.21.1",
+ "pdfcraft-fonts 0.21.1",
+ "pdfcraft-geom",
  "serde",
+ "skrifa 0.44.0",
  "thiserror",
+ "unicode-bidi",
+ "url",
 ]
 
 [[package]]
@@ -1967,8 +2156,8 @@ dependencies = [
  "p521",
  "pbkdf2",
  "pdfcraft-annot",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "rc2",
  "ripemd",
  "rsa",
@@ -1987,8 +2176,8 @@ source = "git+https://github.com/storytold/pdfcraft?tag=v0.9.0#645016addcfb9078c
 dependencies = [
  "base64",
  "image",
- "pdfcraft-cos",
- "pdfcraft-fonts",
+ "pdfcraft-cos 0.9.0",
+ "pdfcraft-fonts 0.9.0",
  "png",
  "roxmltree",
  "sha2",
@@ -2016,6 +2205,12 @@ dependencies = [
  "linebender_resource_handle",
  "smallvec",
 ]
+
+[[package]]
+name = "percent-encoding"
+version = "2.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "phf"
@@ -2136,6 +2331,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10ab3eb7f3becc3a1cbc4f2c6f20267996cfc1a6467a873763411b136a122715"
 dependencies = [
  "portable-atomic",
+]
+
+[[package]]
+name = "potential_utf"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d83eb9bc6d8e5cf568e7a1101d60ee05e81ed50ea106026f3d18deeb046d7661"
+dependencies = [
+ "zerovec",
 ]
 
 [[package]]
@@ -2859,6 +3063,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinystr"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abc840c238154d58f9e86b2792261edfde565a17696e1cda1a449de27979801a"
+dependencies = [
+ "displaydoc",
+ "zerovec",
+]
+
+[[package]]
 name = "tinyvec"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2941,6 +3155,33 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "url"
+version = "2.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+dependencies = [
+ "form_urlencoded",
+ "idna",
+ "percent-encoding",
+ "serde",
+]
+
+[[package]]
+name = "utf8_iter"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af3bd9d3e571c26fcce9d033b87ea5ab061b8d2ffe9b7a5675d810d68f03edf0"
+dependencies = [
+ "utf_types",
+]
+
+[[package]]
+name = "utf_types"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a3b425286980a367278453f3b6d28cdcb134b574e5a35824a6ff5eebad50bb6"
 
 [[package]]
 name = "uuid"
@@ -3396,6 +3637,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "writeable"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
+
+[[package]]
 name = "wuff"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3481,6 +3728,39 @@ name = "zeroize"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85ccff8a4805aba1eaa4cd4afcd49f7557dd2cf5fd79ffc37f8959466effc5aa"
+
+[[package]]
+name = "zerotrie"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea269c3bd32f0a32c321907a2ae912ba6f4649bb0fc764a15627e99a7095a3f"
+dependencies = [
+ "displaydoc",
+ "yoke",
+ "zerofrom",
+]
+
+[[package]]
+name = "zerovec"
+version = "0.11.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f58a2799cfe9a1670c7ea8edbd52ef8edb93cb37a7f83bf31ba9e35d9dae6a40"
+dependencies = [
+ "yoke",
+ "zerofrom",
+ "zerovec-derive",
+]
+
+[[package]]
+name = "zerovec-derive"
+version = "0.11.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3743ddbf47738d929cd1ae2e199d40d0162979dfe31aef8ae646d2bf00bf97a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
+]
 
 [[package]]
 name = "zip"
