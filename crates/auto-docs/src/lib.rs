@@ -1,447 +1,480 @@
-//! Rendu PDF A4 d'un devis, d'une facture, d'un acompte ou d'un avoir : en-têtes émetteur et
-//! client, tableau paginé, totaux par taux de TVA, mentions légales, pied de page numéroté.
-//! Polices Inter (OFL) embarquées : la sortie peut être convertie en PDF/A-3b pour Factur-X.
+//! PDF document rendering for commercial invoices/quotes (`auto-model`), plus A4 DOCX and 16:9 PPTX exports.
 
-use auto_modele::{Facture, INDEMNITE, MENTION_FRANCHISE, TypeDocument, date_fr, eur, pourcent};
-use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, SaveOptions, Stream, write_full};
-use pdfcraft_fonts::pdf::Metrics;
-use std::fmt::Write;
+pub mod pdf_writer;
 
-static INTER: &[u8] = include_bytes!("../fonts/Inter-Regular.ttf");
-static INTER_SEMIBOLD: &[u8] = include_bytes!("../fonts/Inter-SemiBold.ttf");
+use auto_model::{
+    Document, DocumentType, RECOVERY_FEE_NOTICE_FR, VAT_EXEMPT_NOTICE_FR, format_date, format_eur, format_percent,
+    format_percent_bp,
+};
+use auto_theme::LIGHT_PALETTE;
+use pdf_writer::{PdfBuildError, PdfCanvas, decode_logo_image};
+use thiserror::Error;
 
-const L: f64 = 595.28;
-const H: f64 = 841.89;
-const MARGE: f64 = 42.0;
-const BAS: f64 = 64.0;
+const A4_W: f32 = 595.28;
+const A4_H: f32 = 841.89;
+const SLIDE_W: f32 = 960.0;
+const SLIDE_H: f32 = 540.0;
+const MARGIN: f32 = 42.0;
+const FOOTER_TOP: f32 = A4_H - 42.0;
+const PAGE_BODY_BOTTOM: f32 = A4_H - 68.0;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Erreur {
-    #[error("PDF : {0}")]
-    Pdf(#[from] pdfcraft_cos::CosError),
-    #[error("rendu : {0}")]
-    Rendu(String),
+const TEXT_DARK: [f32; 3] = [0.09, 0.11, 0.10];
+const TEXT_MUTED: [f32; 3] = [0.32, 0.39, 0.37];
+const BORDER_GRAY: [f32; 3] = [0.85, 0.88, 0.87];
+const ROW_STRIPE: [f32; 3] = [0.97, 0.98, 0.98];
+
+/// Rendering error emitted by `auto-docs`.
+#[derive(Debug, Error)]
+pub enum RenderError {
+    #[error(transparent)]
+    Pdf(#[from] PdfBuildError),
+    #[error("document contains no renderable content")]
+    EmptyDocument,
 }
 
-struct Police {
-    res: String,
-    m: Metrics,
+/// Paragraph style for selectable-text Word-to-PDF rendering.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DocParagraphStyle {
+    #[default]
+    Normal,
+    Title,
+    Heading1,
+    Heading2,
+    Heading3,
 }
 
-impl Police {
-    fn hex(&self, s: &str) -> String {
-        let bytes = self.m.encode(s).unwrap_or_else(|| {
-            s.chars()
-                .flat_map(|c| self.m.encode(&c.to_string()).or_else(|| self.m.encode("?")).unwrap_or_default())
-                .collect()
-        });
-        bytes.iter().fold(String::with_capacity(bytes.len() * 2), |mut o, b| {
-            let _ = write!(o, "{b:02X}");
-            o
-        })
-    }
-
-    fn largeur(&self, s: &str, taille: f64) -> f64 {
-        let bytes = self.m.encode(s).unwrap_or_default();
-        self.m.codes(&bytes).into_iter().map(|(c, _)| self.m.width(c)).sum::<f64>() * taille
-    }
-
-    /// Découpe en lignes de largeur ≤ `max` (mots longs coupés).
-    fn couper(&self, texte: &str, taille: f64, max: f64) -> Vec<String> {
-        let mut lignes = Vec::new();
-        for para in texte.split('\n') {
-            let mut cur = String::new();
-            for mot in para.split_whitespace() {
-                let essai = if cur.is_empty() { mot.to_string() } else { format!("{cur} {mot}") };
-                if self.largeur(&essai, taille) <= max {
-                    cur = essai;
-                    continue;
-                }
-                if !cur.is_empty() {
-                    lignes.push(std::mem::take(&mut cur));
-                }
-                let mut morceau = String::new();
-                for c in mot.chars() {
-                    morceau.push(c);
-                    if self.largeur(&morceau, taille) > max {
-                        morceau.pop();
-                        lignes.push(std::mem::take(&mut morceau));
-                        morceau.push(c);
-                    }
-                }
-                cur = morceau;
-            }
-            lignes.push(cur);
-        }
-        lignes
-    }
+/// Normalized paragraph input for [`render_docx_pdf`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DocPdfParagraph {
+    pub text: String,
+    pub style: DocParagraphStyle,
+    pub bold: bool,
 }
 
-struct Page {
-    ops: String,
+/// Normalized slide input for [`render_pptx_pdf`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SlidePdf {
+    pub title: Option<String>,
+    pub bullets: Vec<(String, u8)>,
+    pub notes: Option<String>,
 }
 
-struct Rendu {
-    reg: Police,
-    sb: Police,
-    pages: Vec<Page>,
-    y: f64,
-    /// Couleur d'accent du gabarit (composantes 0..1).
-    accent: Option<(f64, f64, f64)>,
-}
+/// Renders an A4 commercial PDF (`Quote`, `Invoice`, `Deposit`, or `CreditNote`) localized via `auto-i18n`.
+pub fn render(doc: &Document) -> Result<Vec<u8>, RenderError> {
+    let lang = doc.resolved_locale();
+    let accent = parse_hex_color(doc.template.as_ref().and_then(|t| t.color.as_deref()))
+        .unwrap_or_else(|| LIGHT_PALETTE.primary.to_f32());
+    let header_tint = tint_color(accent, 0.12);
 
-/// Style de texte : semi-gras, taille (pt), niveau de gris (0 = noir).
-#[derive(Clone, Copy)]
-struct St(bool, f64, f64);
-
-#[derive(Clone, Copy)]
-enum Align {
-    Gauche,
-    Droite,
-}
-
-impl Rendu {
-    fn page(&mut self) -> &mut String {
-        &mut self.pages.last_mut().expect("au moins une page").ops
+    let mut canvas = PdfCanvas::new(A4_W, A4_H)?;
+    let mut logo_dims: Option<(f32, f32)> = None;
+    if let Some(logo) = doc.template.as_ref().and_then(|t| t.logo.as_ref()) {
+        let img = decode_logo_image(&logo.mime, &logo.data_base64)?;
+        let req_w = doc.template.as_ref().and_then(|t| t.width).unwrap_or(96.0).clamp(24.0, 180.0);
+        let req_h = doc
+            .template
+            .as_ref()
+            .and_then(|t| t.height)
+            .unwrap_or_else(|| req_w * (img.height as f32 / img.width.max(1) as f32))
+            .clamp(16.0, 96.0);
+        canvas.add_image("Im0", img);
+        logo_dims = Some((req_w, req_h));
     }
 
-    fn texte(&mut self, St(gras, taille, gris): St, x: f64, y: f64, align: Align, s: &str) {
-        let p = if gras { &self.sb } else { &self.reg };
-        let x = match align {
-            Align::Gauche => x,
-            Align::Droite => x - p.largeur(s, taille),
-        };
-        let (res, hex) = (p.res.clone(), p.hex(s));
-        let _ = writeln!(self.page(), "BT {gris:.2} g /{res} {taille} Tf 1 0 0 1 {x:.2} {y:.2} Tm <{hex}> Tj ET");
-    }
+    let totals = doc.totals();
+    let content_w = A4_W - 2.0 * MARGIN;
+    let right_x = A4_W - MARGIN;
 
-    /// Fond teinté : 12 % de l'accent sur blanc, sinon gris clair.
-    fn fond(&mut self, x: f64, y: f64, w: f64, h: f64) {
-        match self.accent {
-            Some((r, g, b)) => {
-                let t = |c: f64| 1.0 - 0.12 * (1.0 - c);
-                let _ =
-                    writeln!(self.page(), "{:.3} {:.3} {:.3} rg {x:.2} {y:.2} {w:.2} {h:.2} re f", t(r), t(g), t(b));
-            }
-            None => self.rect(0.93, x, y, w, h),
-        }
-    }
+    // Top accent bar.
+    canvas.fill_rect_top(0.0, 0.0, A4_W, 6.0, accent);
 
-    fn rect(&mut self, gris: f64, x: f64, y: f64, w: f64, h: f64) {
-        let _ = writeln!(self.page(), "{gris:.2} g {x:.2} {y:.2} {w:.2} {h:.2} re f");
-    }
+    let mut y = 34.0;
+    let type_label = doc.doc_type.label(lang);
+    let title_str = format!("{type_label} {}", doc.number);
 
-    fn trait_h(&mut self, x1: f64, x2: f64, y: f64) {
-        let _ = writeln!(self.page(), "0.75 G 0.5 w {x1:.2} {y:.2} m {x2:.2} {y:.2} l S");
-    }
-
-    fn nouvelle_page(&mut self) {
-        self.pages.push(Page { ops: String::new() });
-        self.y = H - MARGE;
-    }
-
-    /// Bloc de lignes (gauche) ; renvoie le y sous le bloc.
-    fn bloc(&mut self, x: f64, mut y: f64, max: f64, lignes: &[(bool, f64, String)]) -> f64 {
-        for (gras, taille, t) in lignes {
-            let p = if *gras { &self.sb } else { &self.reg };
-            for l in p.couper(t, *taille, max) {
-                self.texte(St(*gras, *taille, 0.0), x, y, Align::Gauche, &l);
-                y -= taille * 1.35;
-            }
-        }
-        y
-    }
-}
-
-// Colonnes du tableau : désignation | qté | PU HT | TVA | total HT (bords droits).
-const C_DESIGNATION: f64 = MARGE + 6.0;
-const C_QTE: f64 = 352.0;
-const C_PU: f64 = 432.0;
-const C_TVA: f64 = 478.0;
-const C_TOTAL: f64 = L - MARGE - 6.0;
-
-fn quantite(q: f64) -> String {
-    let s = format!("{q:.3}");
-    s.trim_end_matches('0').trim_end_matches('.').replace('.', ",")
-}
-
-fn embarquer(doc: &mut Document, fonts: &mut Dict, bytes: &[u8], famille: &str) -> Result<Police, Erreur> {
-    let res = pdfcraft_fonts::embedding::embed(doc, fonts, bytes, famille).map_err(Erreur::Rendu)?;
-    let d = doc.dict(fonts.get(res.as_bytes()).ok_or_else(|| Erreur::Rendu("police absente".into()))?);
-    let m = Metrics::from_dict(doc, &d.ok_or_else(|| Erreur::Rendu("police illisible".into()))?);
-    Ok(Police { res, m })
-}
-
-/// PDF A4 du document. `numero` vide : brouillon.
-pub fn rendre(f: &Facture) -> Result<Vec<u8>, Erreur> {
-    let mut doc = pdfcraft_create::blank(L, H, 1).map_err(|e| Erreur::Rendu(e.to_string()))?;
-    let mut fonts = Dict::new();
-    let reg = embarquer(&mut doc, &mut fonts, INTER, "Inter")?;
-    let sb = embarquer(&mut doc, &mut fonts, INTER_SEMIBOLD, "Inter-SemiBold")?;
-    let gabarit = f.gabarit.clone().unwrap_or_default();
-    let mut r = Rendu { reg, sb, pages: vec![Page { ops: String::new() }], y: H - MARGE, accent: gabarit.rvb() };
-    let mut xobjets = Dict::new();
-    // Logo en haut à gauche : 48 pt de haut au plus, 160 pt de large au plus.
-    let mut haut_logo = 0.0;
-    if let Some(l) = &gabarit.logo {
-        let jpeg = auto_modele::base64(&l.jpeg).ok_or_else(|| Erreur::Rendu("logo : base64 invalide".into()))?;
-        if l.largeur == 0 || l.hauteur == 0 || !jpeg.starts_with(&[0xFF, 0xD8]) {
-            return Err(Erreur::Rendu("logo : JPEG attendu".into()));
-        }
-        let mut d = Dict::new();
-        d.set(b"Type".to_vec(), Object::name("XObject"));
-        d.set(b"Subtype".to_vec(), Object::name("Image"));
-        d.set(b"Width".to_vec(), Object::Int(i64::from(l.largeur)));
-        d.set(b"Height".to_vec(), Object::Int(i64::from(l.hauteur)));
-        d.set(b"ColorSpace".to_vec(), Object::name("DeviceRGB"));
-        d.set(b"BitsPerComponent".to_vec(), Object::Int(8));
-        d.set(b"Filter".to_vec(), Object::name("DCTDecode"));
-        let img = doc.add(Object::Stream(Stream::from_raw(d, jpeg)));
-        xobjets.set(b"Logo".to_vec(), Object::Ref(img));
-        let ratio = f64::from(l.largeur) / f64::from(l.hauteur);
-        let (h, w) = if 48.0 * ratio > 160.0 { (160.0 / ratio, 160.0) } else { (48.0, 48.0 * ratio) };
-        let _ = writeln!(r.page(), "q {w:.2} 0 0 {h:.2} {MARGE:.2} {:.2} cm /Logo Do Q", H - MARGE - h);
-        haut_logo = h + 12.0;
-    }
-    let t = f.totaux();
-    let est_facture = f.type_ != TypeDocument::Devis;
-
-    // En-tête : émetteur à gauche, titre et dates à droite.
-    let e = &f.emetteur;
-    let mut lignes = vec![(true, 13.0, e.nom.clone()), (false, 9.0, e.adresse.clone())];
-    if !e.siret.is_empty() {
-        lignes.push((false, 9.0, format!("SIRET : {}", e.siret)));
-    }
-    if let Some(tva) = e.tva_intracom.as_deref().filter(|s| !s.is_empty()) {
-        lignes.push((false, 9.0, format!("N° TVA : {tva}")));
-    }
-    if let Some(m) = e.email.as_deref().filter(|s| !s.is_empty()) {
-        lignes.push((false, 9.0, m.to_string()));
-    }
-    let y_gauche = r.bloc(MARGE, H - MARGE - 6.0 - haut_logo, 250.0, &lignes);
-
-    let x_droite = 330.0;
-    let numero = if f.numero.is_empty() { "brouillon".to_string() } else { f.numero.clone() };
-    let mut y = H - MARGE - 10.0;
-    r.texte(St(true, 18.0, 0.0), x_droite, y, Align::Gauche, f.type_.libelle());
-    if let Some((cr, cg, cb)) = r.accent {
-        // Filet d'accent sous le titre.
-        let _ = writeln!(
-            r.page(),
-            "{cr:.3} {cg:.3} {cb:.3} RG 1.5 w {x_droite:.2} {:.2} m {:.2} {:.2} l S",
-            y - 6.0,
-            L - MARGE,
-            y - 6.0
+    // Optional brand logo + document title on the header row.
+    if let Some((lw, lh)) = logo_dims {
+        canvas.draw_image_top("Im0", MARGIN, y, lw, lh);
+        canvas.draw_text_right_top(right_x, y + 18.0, true, 18.0, accent, &title_str);
+        canvas.draw_text_right_top(
+            right_x,
+            y + 34.0,
+            false,
+            9.5,
+            TEXT_MUTED,
+            &format!("{}: {}", tr_pdf(lang, "Date"), format_date(&doc.date, lang)),
         );
-    }
-    y -= 18.0;
-    r.texte(St(false, 10.0, 0.0), x_droite, y, Align::Gauche, &format!("N° {numero}"));
-    y -= 14.0;
-    let mut dates = vec![format!("Date : {}", date_fr(&f.date))];
-    if let Some(d) = &f.date_prestation {
-        dates.push(format!("Date de prestation : {}", date_fr(d)));
-    }
-    if let (true, Some(d)) = (est_facture, &f.echeance) {
-        dates.push(format!("Échéance : {}", date_fr(d)));
-    }
-    if let (TypeDocument::Devis, Some(j)) = (f.type_, f.validite_jours) {
-        dates.push(format!("Validité : {j} jours"));
-    }
-    if let (TypeDocument::Avoir, Some(o)) = (f.type_, &f.origine) {
-        dates.push(format!("Avoir sur la facture {o}"));
-    }
-    for d in dates {
-        r.texte(St(false, 9.0, 0.25), x_droite, y, Align::Gauche, &d);
-        y -= 12.0;
-    }
-
-    // Client.
-    let c = &f.client;
-    let y_client = y.min(y_gauche) - 16.0;
-    r.texte(St(false, 8.0, 0.45), x_droite, y_client, Align::Gauche, "CLIENT");
-    let mut lc = vec![(true, 10.5, c.nom.clone()), (false, 9.0, c.adresse.clone())];
-    if let Some(a) = c.adresse_livraison.as_deref().filter(|s| !s.is_empty()) {
-        lc.push((false, 9.0, format!("Livraison : {a}")));
-    }
-    if !c.siret.is_empty() {
-        lc.push((false, 9.0, format!("SIRET : {}", c.siret)));
-    }
-    if let Some(tva) = c.tva_intracom.as_deref().filter(|s| !s.is_empty()) {
-        lc.push((false, 9.0, format!("N° TVA : {tva}")));
-    }
-    r.y = r.bloc(x_droite, y_client - 14.0, L - MARGE - x_droite, &lc) - 22.0;
-
-    // Tableau.
-    let entete = |r: &mut Rendu| {
-        let y = r.y;
-        r.fond(MARGE, y - 6.0, L - 2.0 * MARGE, 20.0);
-        for (x, a, s) in [
-            (C_DESIGNATION, Align::Gauche, "Désignation"),
-            (C_QTE, Align::Droite, "Qté"),
-            (C_PU, Align::Droite, "PU HT"),
-            (C_TVA, Align::Droite, "TVA"),
-            (C_TOTAL, Align::Droite, "Total HT"),
-        ] {
-            r.texte(St(true, 8.5, 0.2), x, y, a, s);
-        }
-        r.y -= 24.0;
-    };
-    entete(&mut r);
-    for l in &f.lignes {
-        let mut texte = l.designation.clone();
-        if let Some(u) = l.unite.as_deref().filter(|s| !s.is_empty()) {
-            texte = format!("{texte} ({u})");
-        }
-        if l.remise_bp > 0 {
-            texte = format!("{texte} — remise {}", auto_modele::pourcent_bp(l.remise_bp));
-        }
-        let lignes = r.reg.couper(&texte, 9.5, C_QTE - 60.0 - C_DESIGNATION);
-        let hauteur = lignes.len() as f64 * 12.5 + 9.0;
-        if r.y - hauteur < BAS {
-            r.nouvelle_page();
-            entete(&mut r);
-        }
-        let y0 = r.y;
-        for (i, s) in lignes.iter().enumerate() {
-            r.texte(St(false, 9.5, 0.0), C_DESIGNATION, y0 - i as f64 * 12.5, Align::Gauche, s);
-        }
-        r.texte(St(false, 9.5, 0.0), C_QTE, y0, Align::Droite, &quantite(l.quantite));
-        r.texte(St(false, 9.5, 0.0), C_PU, y0, Align::Droite, &eur(l.prix_unitaire_ht_cents));
-        let taux = if f.franchise_tva { "—".to_string() } else { pourcent(l.tva) };
-        r.texte(St(false, 9.5, 0.0), C_TVA, y0, Align::Droite, &taux);
-        r.texte(St(false, 9.5, 0.0), C_TOTAL, y0, Align::Droite, &eur(l.ht_cents()));
-        // Filet sous la dernière ligne de texte (descendantes comprises).
-        r.trait_h(MARGE, L - MARGE, y0 - (lignes.len() as f64 - 1.0) * 12.5 - 5.5);
-        r.y -= hauteur;
-    }
-
-    // Totaux.
-    let n_taux = if f.franchise_tva { 0 } else { t.par_taux.len() };
-    let besoin = 30.0 + 14.0 * (n_taux as f64 + 2.0);
-    if r.y - besoin < BAS {
-        r.nouvelle_page();
-    }
-    r.y -= 10.0;
-    let x_lib = 380.0;
-    let ligne_total = |r: &mut Rendu, gras: bool, lib: &str, val: &str| {
-        let y = r.y;
-        r.texte(St(gras, 9.5, 0.0), x_lib, y, Align::Gauche, lib);
-        r.texte(St(gras, 9.5, 0.0), C_TOTAL, y, Align::Droite, val);
-        r.y -= 14.0;
-    };
-    ligne_total(&mut r, false, "Total HT", &eur(t.ht_cents));
-    if !f.franchise_tva {
-        for (taux, (base, tva)) in &t.par_taux {
-            ligne_total(&mut r, false, &format!("TVA {} sur {}", pourcent(*taux), eur(*base)), &eur(*tva));
-        }
-    }
-    let y = r.y + 4.0;
-    r.fond(x_lib - 6.0, y - 14.0, L - MARGE - x_lib + 6.0, 18.0);
-    let lib_ttc = if f.type_ == TypeDocument::Avoir { "Total TTC à déduire" } else { "Total TTC" };
-    ligne_total(&mut r, true, lib_ttc, &eur(t.ttc_cents));
-
-    // Mentions.
-    let mut mentions: Vec<(bool, f64, String)> = Vec::new();
-    if f.franchise_tva {
-        mentions.push((false, 8.5, MENTION_FRANCHISE.into()));
-    }
-    if let Some(c) = &f.conditions_paiement {
-        mentions.push((false, 8.5, format!("Conditions de paiement : {c}")));
-    }
-    if est_facture {
-        if let Some(p) = &f.penalites_retard {
-            mentions.push((false, 8.5, format!("Pénalités de retard : {p}")));
-        }
-        mentions.push((false, 8.5, INDEMNITE.into()));
-        if let Some(e) = &f.escompte {
-            mentions.push((false, 8.5, format!("Escompte : {e}")));
-        }
+        y += lh.max(44.0) + 18.0;
     } else {
-        mentions.push((false, 8.5, "Bon pour accord : date, signature et mention « Bon pour accord »".into()));
+        canvas.draw_text_top(MARGIN, y + 16.0, true, 20.0, accent, &title_str);
+        canvas.draw_text_right_top(
+            right_x,
+            y + 16.0,
+            false,
+            9.5,
+            TEXT_MUTED,
+            &format!("{}: {}", tr_pdf(lang, "Date"), format_date(&doc.date, lang)),
+        );
+        y += 38.0;
     }
-    if let Some(n) = f.notes.as_deref().filter(|s| !s.is_empty()) {
-        mentions.push((false, 8.5, n.to_string()));
-    }
-    let hauteur: usize = mentions.iter().map(|(_, s, t)| r.reg.couper(t, *s, L - 2.0 * MARGE).len()).sum();
-    if r.y - 20.0 - hauteur as f64 * 11.5 < BAS {
-        r.nouvelle_page();
-    }
-    let y = r.y - 14.0;
-    r.y = r.bloc(MARGE, y, L - 2.0 * MARGE, &mentions);
 
-    // Pieds de page.
-    let n = r.pages.len();
-    for i in 0..n {
-        let pied = format!("{} — SIRET {} — {} {} — page {}/{}", e.nom, e.siret, f.type_.libelle(), numero, i + 1, n);
-        let largeur = r.reg.largeur(&pied, 7.5);
-        let (res, hex) = (r.reg.res.clone(), r.reg.hex(&pied));
-        let _ =
-            writeln!(r.pages[i].ops, "BT 0.45 g /{res} 7.5 Tf 1 0 0 1 {:.2} 30 Tm <{hex}> Tj ET", (L - largeur) / 2.0);
-        if let Some(p) = gabarit.pied_de_page.as_deref().filter(|s| !s.is_empty()) {
-            let largeur = r.reg.largeur(p, 7.5);
-            let (res, hex) = (r.reg.res.clone(), r.reg.hex(p));
-            let _ = writeln!(
-                r.pages[i].ops,
-                "BT 0.45 g /{res} 7.5 Tf 1 0 0 1 {:.2} 40 Tm <{hex}> Tj ET",
-                ((L - largeur) / 2.0).max(MARGE)
-            );
+    // Secondary document dates / validity / origin metadata.
+    let mut meta_items: Vec<String> = Vec::new();
+    if let Some(d) = doc.service_date.as_deref() {
+        meta_items.push(format!("{}: {}", tr_pdf(lang, "Service date"), format_date(d, lang)));
+    }
+    if let Some(d) = doc.due_date.as_deref() {
+        meta_items.push(format!("{}: {}", tr_pdf(lang, "Due date"), format_date(d, lang)));
+    }
+    if let Some(days) = doc.validity_days {
+        meta_items.push(format!(
+            "{}: {}",
+            tr_pdf(lang, "Validity"),
+            auto_i18n::tr_plural(lang, "{n} day", "{n} days", u64::from(days), &[])
+        ));
+    }
+    if let Some(orig) = doc.origin.as_deref() {
+        meta_items.push(format!("{}: {orig}", tr_pdf(lang, "Origin")));
+    }
+    if !meta_items.is_empty() {
+        canvas.draw_text_top(MARGIN, y, false, 8.8, TEXT_MUTED, &meta_items.join("   |   "));
+        y += 18.0;
+    }
+
+    // Issuer (left) and Customer (right) boxes.
+    let box_gap = 20.0;
+    let box_w = (content_w - box_gap) / 2.0;
+    let issuer_lines = format_party_lines(&doc.issuer, lang);
+    let customer_lines = format_party_lines(&doc.customer, lang);
+    let max_party_lines = issuer_lines.len().max(customer_lines.len()) as f32;
+    let box_h = 26.0 + max_party_lines * 13.0 + 10.0;
+
+    canvas.fill_rect_top(MARGIN, y, box_w, box_h, ROW_STRIPE);
+    canvas.fill_rect_top(MARGIN + box_w + box_gap, y, box_w, box_h, ROW_STRIPE);
+
+    canvas.draw_text_top(MARGIN + 10.0, y + 15.0, true, 8.5, accent, tr_pdf(lang, "Issuer"));
+    canvas.draw_text_top(MARGIN + box_w + box_gap + 10.0, y + 15.0, true, 8.5, accent, tr_pdf(lang, "Bill to"));
+
+    draw_party_block(&mut canvas, MARGIN + 10.0, y + 29.0, box_w - 20.0, &issuer_lines);
+    draw_party_block(&mut canvas, MARGIN + box_w + box_gap + 10.0, y + 29.0, box_w - 20.0, &customer_lines);
+    y += box_h + 22.0;
+
+    // Table columns layout.
+    let col_desc_x = MARGIN + 8.0;
+    let col_desc_w = 248.0;
+    let col_qty_r = MARGIN + 312.0;
+    let col_unit_r = MARGIN + 392.0;
+    let col_vat_r = MARGIN + 440.0;
+    let col_net_r = right_x - 8.0;
+
+    let draw_table_header = |c: &mut PdfCanvas<'_>, top_y: f32| -> f32 {
+        c.fill_rect_top(MARGIN, top_y, content_w, 22.0, header_tint);
+        let base_y = top_y + 14.5;
+        c.draw_text_top(col_desc_x, base_y, true, 8.8, TEXT_DARK, tr_pdf(lang, "Description"));
+        c.draw_text_right_top(col_qty_r, base_y, true, 8.8, TEXT_DARK, tr_pdf(lang, "Qty"));
+        c.draw_text_right_top(col_unit_r, base_y, true, 8.8, TEXT_DARK, tr_pdf(lang, "Unit price"));
+        c.draw_text_right_top(col_vat_r, base_y, true, 8.8, TEXT_DARK, tr_pdf(lang, "VAT"));
+        c.draw_text_right_top(col_net_r, base_y, true, 8.8, TEXT_DARK, tr_pdf(lang, "Net amount"));
+        top_y + 24.0
+    };
+
+    y = draw_table_header(&mut canvas, y);
+
+    for (idx, line) in doc.lines.iter().enumerate() {
+        let mut desc_lines = canvas.wrap_text(false, 9.2, col_desc_w, &line.description);
+        if let Some(bp) = line.discount_bp.filter(|&v| v > 0) {
+            let pct = format_percent_bp(bp, lang);
+            desc_lines.push(auto_i18n::tr_args(lang, Some("pdf"), "Discount {rate}", &[("rate", &pct)]));
         }
+        let row_h = (desc_lines.len() as f32 * 12.5 + 10.0).max(22.0);
+        if y + row_h > PAGE_BODY_BOTTOM {
+            canvas.next_page();
+            canvas.fill_rect_top(0.0, 0.0, A4_W, 4.0, accent);
+            y = draw_table_header(&mut canvas, 36.0);
+        }
+
+        if idx % 2 == 1 {
+            canvas.fill_rect_top(MARGIN, y, content_w, row_h, ROW_STRIPE);
+        }
+
+        let mut text_y = y + 14.0;
+        for (li, text) in desc_lines.iter().enumerate() {
+            let color = if li == 0 { TEXT_DARK } else { TEXT_MUTED };
+            let size = if li == 0 { 9.2 } else { 8.0 };
+            canvas.draw_text_top(col_desc_x, text_y, false, size, color, text);
+            text_y += 12.5;
+        }
+
+        let qty_str = match line.unit.as_deref() {
+            Some(u) if !u.trim().is_empty() => format!("{} {u}", trim_qty(line.quantity)),
+            _ => trim_qty(line.quantity),
+        };
+        let unit_str = format_eur(line.unit_price_excl_vat_cents, lang);
+        let vat_str = if doc.vat_exempt { format_percent(0, lang) } else { format_percent(line.vat, lang) };
+        let net_str = format_eur(line.net_excl_vat_cents(), lang);
+
+        let num_y = y + 14.0;
+        canvas.draw_text_right_top(col_qty_r, num_y, false, 9.0, TEXT_DARK, &qty_str);
+        canvas.draw_text_right_top(col_unit_r, num_y, false, 9.0, TEXT_DARK, &unit_str);
+        canvas.draw_text_right_top(col_vat_r, num_y, false, 9.0, TEXT_DARK, &vat_str);
+        canvas.draw_text_right_top(col_net_r, num_y, true, 9.0, TEXT_DARK, &net_str);
+
+        canvas.hline_top(MARGIN, right_x, y + row_h, 0.5, BORDER_GRAY);
+        y += row_h;
     }
 
-    assembler(doc, fonts, xobjets, r.pages, &format!("{} {numero}", f.type_.libelle()), &e.nom)
+    y += 14.0;
+    let totals_h = 54.0 + (totals.by_rate.len() as f32) * 15.0;
+    if y + totals_h > PAGE_BODY_BOTTOM {
+        canvas.next_page();
+        canvas.fill_rect_top(0.0, 0.0, A4_W, 4.0, accent);
+        y = 42.0;
+    }
+
+    // Totals summary box aligned on the right half.
+    let sum_x = MARGIN + 275.0;
+    let sum_w = right_x - sum_x;
+    canvas.fill_rect_top(sum_x, y, sum_w, totals_h, ROW_STRIPE);
+
+    let mut sy = y + 17.0;
+    canvas.draw_text_top(sum_x + 12.0, sy, false, 9.5, TEXT_DARK, tr_pdf(lang, "Total excl. VAT"));
+    canvas.draw_text_right_top(
+        right_x - 12.0,
+        sy,
+        true,
+        9.5,
+        TEXT_DARK,
+        &format_eur(totals.total_excl_vat_cents, lang),
+    );
+    sy += 16.0;
+
+    for row in &totals.by_rate {
+        let rate_str = format_percent(row.rate, lang);
+        let label = auto_i18n::tr_args(lang, Some("pdf"), "VAT {rate}", &[("rate", &rate_str)]);
+        canvas.draw_text_top(sum_x + 12.0, sy, false, 9.0, TEXT_MUTED, &label);
+        canvas.draw_text_right_top(right_x - 12.0, sy, false, 9.0, TEXT_MUTED, &format_eur(row.vat_cents, lang));
+        sy += 15.0;
+    }
+
+    canvas.hline_top(sum_x + 10.0, right_x - 10.0, sy - 4.0, 0.75, accent);
+    sy += 12.0;
+    canvas.draw_text_top(sum_x + 12.0, sy, true, 11.0, accent, tr_pdf(lang, "Total incl. VAT"));
+    canvas.draw_text_right_top(right_x - 12.0, sy, true, 11.0, accent, &format_eur(totals.total_incl_vat_cents, lang));
+
+    y += totals_h + 18.0;
+
+    // Legal notices and document notes.
+    let mut notes_blocks: Vec<String> = Vec::new();
+    if doc.vat_exempt {
+        let msg = if lang == "fr" {
+            auto_i18n::tr_ctx(lang, "pdf", VAT_EXEMPT_NOTICE_FR)
+        } else {
+            auto_i18n::tr_ctx(lang, "pdf", "VAT not applicable (Art. 293 B CGI)")
+        };
+        notes_blocks.push(msg.into_owned());
+    }
+    if let Some(terms) = doc.payment_terms.as_deref() {
+        notes_blocks.push(format!("{}: {terms}", tr_pdf(lang, "Payment terms")));
+    }
+    if let Some(pen) = doc.late_penalties.as_deref() {
+        notes_blocks.push(format!("{}: {pen}", tr_pdf(lang, "Late penalties")));
+    } else if doc.doc_type != DocumentType::Quote {
+        notes_blocks.push(auto_i18n::tr_ctx(lang, "pdf", RECOVERY_FEE_NOTICE_FR).into_owned());
+    }
+    if let Some(disc) = doc.early_discount.as_deref() {
+        notes_blocks.push(format!("{}: {disc}", tr_pdf(lang, "Early discount")));
+    }
+    if let Some(n) = doc.notes.as_deref() {
+        notes_blocks.push(n.to_owned());
+    }
+    if let Some(foot) = doc.template.as_ref().and_then(|t| t.footer.as_deref()) {
+        notes_blocks.push(foot.to_owned());
+    }
+
+    for block in notes_blocks {
+        let wrapped = canvas.wrap_text(false, 8.5, content_w, &block);
+        let needed = wrapped.len() as f32 * 11.5 + 4.0;
+        if y + needed > PAGE_BODY_BOTTOM {
+            canvas.next_page();
+            canvas.fill_rect_top(0.0, 0.0, A4_W, 4.0, accent);
+            y = 42.0;
+        }
+        for line in wrapped {
+            canvas.draw_text_top(MARGIN, y, false, 8.5, TEXT_MUTED, &line);
+            y += 11.5;
+        }
+        y += 3.0;
+    }
+
+    // Draw final page footer with document number.
+    canvas.hline_top(MARGIN, right_x, FOOTER_TOP - 12.0, 0.5, BORDER_GRAY);
+    canvas.draw_text_top(
+        MARGIN,
+        FOOTER_TOP,
+        false,
+        8.0,
+        TEXT_MUTED,
+        &format!("{} — {} {}", doc.issuer.name, type_label, doc.number),
+    );
+    canvas.draw_text_right_top(right_x, FOOTER_TOP, false, 8.0, TEXT_MUTED, &format_date(&doc.date, lang));
+
+    Ok(canvas.finish(Some(&title_str))?)
 }
 
-fn assembler(
-    mut doc: Document,
-    fonts: Dict,
-    xobjets: Dict,
-    pages: Vec<Page>,
-    titre: &str,
-    auteur: &str,
-) -> Result<Vec<u8>, Erreur> {
-    let premiere =
-        pdfcraft_model::pages(&doc).into_iter().next().ok_or_else(|| Erreur::Rendu("page absente".into()))?;
-    let parent: ObjRef = match premiere.dict.get(b"Parent") {
-        Some(Object::Ref(p)) => *p,
-        _ => return Err(Erreur::Rendu("arbre de pages illisible".into())),
-    };
-    let mut res = Dict::new();
-    res.set(b"Font".to_vec(), Object::Dict(fonts));
-    if !xobjets.is_empty() {
-        res.set(b"XObject".to_vec(), Object::Dict(xobjets));
-    }
-    let res = doc.add(Object::Dict(res));
-    let mut kids = vec![Object::Ref(premiere.obj)];
-    for (i, p) in pages.into_iter().enumerate() {
-        let contenu = doc.add(Object::Stream(Stream::flate(Dict::new(), p.ops.as_bytes())));
-        if i == 0 {
-            doc.update_dict(premiere.obj, |d| {
-                d.set(b"Resources".to_vec(), Object::Ref(res));
-                d.set(b"Contents".to_vec(), Object::Ref(contenu));
-            })?;
-            continue;
+/// Renders styled paragraphs from a DOCX document to an A4 PDF with selectable embedded fonts.
+pub fn render_docx_pdf(title: Option<&str>, paragraphs: &[DocPdfParagraph]) -> Result<Vec<u8>, RenderError> {
+    let mut canvas = PdfCanvas::new(A4_W, A4_H)?;
+    let accent = LIGHT_PALETTE.primary.to_f32();
+    let content_w = A4_W - 2.0 * MARGIN;
+    let right_x = A4_W - MARGIN;
+    let mut y = 52.0;
+
+    canvas.fill_rect_top(0.0, 0.0, A4_W, 4.0, accent);
+
+    if let Some(t) = title.filter(|s| !s.trim().is_empty()) {
+        for line in canvas.wrap_text(true, 18.0, content_w, t) {
+            canvas.draw_text_top(MARGIN, y, true, 18.0, accent, &line);
+            y += 24.0;
         }
-        let mut d = Dict::new();
-        d.set(b"Type".to_vec(), Object::name("Page"));
-        d.set(b"Parent".to_vec(), Object::Ref(parent));
-        d.set(
-            b"MediaBox".to_vec(),
-            Object::Array(vec![Object::Int(0), Object::Int(0), Object::Real(L), Object::Real(H)]),
-        );
-        d.set(b"Resources".to_vec(), Object::Ref(res));
-        d.set(b"Contents".to_vec(), Object::Ref(contenu));
-        kids.push(Object::Ref(doc.add(Object::Dict(d))));
+        y += 6.0;
     }
-    let n = kids.len() as i64;
-    doc.update_dict(parent, |d| {
-        d.set(b"Kids".to_vec(), Object::Array(kids));
-        d.set(b"Count".to_vec(), Object::Int(n));
-    })?;
-    let mut info = Dict::new();
-    info.set(b"Title".to_vec(), PdfString::text(titre));
-    info.set(b"Author".to_vec(), PdfString::text(auteur));
-    info.set(b"Producer".to_vec(), PdfString::text("auto"));
-    let info = doc.add(Object::Dict(info));
-    doc.trailer_mut().set(b"Info".to_vec(), Object::Ref(info));
-    Ok(write_full(&doc, &SaveOptions::default())?)
+
+    for para in paragraphs {
+        let (bold, size, line_h, space_after, color) = match para.style {
+            DocParagraphStyle::Title => (true, 18.0, 24.0, 8.0, accent),
+            DocParagraphStyle::Heading1 => (true, 14.5, 20.0, 6.0, accent),
+            DocParagraphStyle::Heading2 => (true, 12.5, 17.5, 5.0, TEXT_DARK),
+            DocParagraphStyle::Heading3 => (true, 11.0, 15.5, 4.0, TEXT_DARK),
+            DocParagraphStyle::Normal => (para.bold, 10.2, 14.5, 5.0, TEXT_DARK),
+        };
+        let wrapped = canvas.wrap_text(bold, size, content_w, &para.text);
+        for line in wrapped {
+            if y + line_h > PAGE_BODY_BOTTOM {
+                canvas.next_page();
+                canvas.fill_rect_top(0.0, 0.0, A4_W, 4.0, accent);
+                y = 48.0;
+            }
+            canvas.draw_text_top(MARGIN, y, bold, size, color, &line);
+            y += line_h;
+        }
+        y += space_after;
+    }
+
+    canvas.hline_top(MARGIN, right_x, FOOTER_TOP - 10.0, 0.5, BORDER_GRAY);
+    Ok(canvas.finish(title)?)
+}
+
+/// Renders 16:9 presentation slides to a widescreen PDF (one slide per page, selectable text).
+pub fn render_pptx_pdf(title: Option<&str>, slides: &[SlidePdf]) -> Result<Vec<u8>, RenderError> {
+    if slides.is_empty() {
+        return Err(RenderError::EmptyDocument);
+    }
+    let mut canvas = PdfCanvas::new(SLIDE_W, SLIDE_H)?;
+    let accent = LIGHT_PALETTE.primary.to_f32();
+    let pad_x = 56.0;
+    let body_w = SLIDE_W - 2.0 * pad_x;
+
+    for (idx, slide) in slides.iter().enumerate() {
+        if idx > 0 {
+            canvas.next_page();
+        }
+        canvas.fill_rect_top(0.0, 0.0, SLIDE_W, 8.0, accent);
+
+        let mut y = 68.0;
+        if let Some(st) = slide.title.as_deref().filter(|s| !s.trim().is_empty()) {
+            let size = if idx == 0 && slide.bullets.is_empty() { 30.0 } else { 24.0 };
+            for line in canvas.wrap_text(true, size, body_w, st) {
+                canvas.draw_text_top(pad_x, y, true, size, accent, &line);
+                y += size * 1.25;
+            }
+            canvas.hline_top(pad_x, SLIDE_W - pad_x, y - 6.0, 1.0, BORDER_GRAY);
+            y += 22.0;
+        }
+
+        for (bullet, level) in &slide.bullets {
+            let indent = f32::from(*level) * 24.0;
+            let x_bullet = pad_x + indent;
+            let x_text = x_bullet + 16.0;
+            let avail = (body_w - indent - 16.0).max(120.0);
+            let lines = canvas.wrap_text(false, 15.0, avail, bullet);
+            for (li, line) in lines.iter().enumerate() {
+                if y > SLIDE_H - 48.0 {
+                    break;
+                }
+                if li == 0 {
+                    canvas.draw_text_top(x_bullet, y, true, 15.0, accent, "•");
+                }
+                canvas.draw_text_top(x_text, y, false, 15.0, TEXT_DARK, line);
+                y += 22.0;
+            }
+            y += 6.0;
+        }
+
+        let slide_num = format!("{} / {}", idx + 1, slides.len());
+        canvas.draw_text_right_top(SLIDE_W - pad_x, SLIDE_H - 24.0, false, 10.0, TEXT_MUTED, &slide_num);
+    }
+
+    Ok(canvas.finish(title)?)
+}
+
+fn tr_pdf<'a>(lang: &str, key: &'a str) -> &'a str {
+    match auto_i18n::tr_ctx(lang, "pdf", key) {
+        std::borrow::Cow::Borrowed(s) => s,
+        std::borrow::Cow::Owned(_) => key,
+    }
+}
+
+fn format_party_lines(p: &auto_model::Party, lang: &str) -> Vec<String> {
+    let mut lines = vec![p.name.clone()];
+    for part in p.address.split('\n').map(str::trim).filter(|s| !s.is_empty()) {
+        lines.push(part.to_owned());
+    }
+    if let Some(tax) = p.tax_id.as_deref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("{}: {tax}", tr_pdf(lang, "Tax ID")));
+    }
+    if let Some(vat) = p.vat_number.as_deref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("{}: {vat}", tr_pdf(lang, "VAT number")));
+    }
+    if let Some(deliv) = p.delivery_address.as_deref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("{}: {deliv}", tr_pdf(lang, "Ship to")));
+    }
+    if let Some(email) = p.email.as_deref().filter(|s| !s.trim().is_empty()) {
+        lines.push(email.to_owned());
+    }
+    lines
+}
+
+fn draw_party_block(canvas: &mut PdfCanvas<'_>, x: f32, start_y: f32, max_w: f32, lines: &[String]) {
+    let mut y = start_y;
+    for (idx, item) in lines.iter().enumerate() {
+        let bold = idx == 0;
+        let color = if bold { TEXT_DARK } else { TEXT_MUTED };
+        for wrapped in canvas.wrap_text(bold, 9.0, max_w, item) {
+            canvas.draw_text_top(x, y, bold, 9.0, color, &wrapped);
+            y += 12.5;
+        }
+    }
+}
+
+fn parse_hex_color(raw: Option<&str>) -> Option<[f32; 3]> {
+    let hex = raw?.trim().strip_prefix('#')?;
+    if hex.len() != 6 {
+        return None;
+    }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some([f32::from(r) / 255.0, f32::from(g) / 255.0, f32::from(b) / 255.0])
+}
+
+fn tint_color(rgb: [f32; 3], strength: f32) -> [f32; 3] {
+    [1.0 - strength * (1.0 - rgb[0]), 1.0 - strength * (1.0 - rgb[1]), 1.0 - strength * (1.0 - rgb[2])]
+}
+
+fn trim_qty(q: f64) -> String {
+    if (q.fract()).abs() < 1e-6 {
+        format!("{}", q as i64)
+    } else {
+        format!("{q:.2}").trim_end_matches('0').trim_end_matches('.').to_owned()
+    }
 }

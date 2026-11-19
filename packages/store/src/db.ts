@@ -1,98 +1,122 @@
-import { SQL, type TransactionSQL } from "bun";
+// Unified SQLite connections (D1 global, CompanyDO SQLite, bun:sqlite WAL), schema migrations, and company routing.
+import { readFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { Blobs, Sql, Tx } from "@aphrody/auto-platform";
+import { bunSqlite, dirBlobs } from "@aphrody/auto-platform/bun";
+import type { CompanyTx } from "./sqlite";
+import { StoreError } from "./sqlite";
 
-export type Sql = SQL;
-export type Tx = TransactionSQL;
+export type { Sql, Tx };
 
-export const DEFAULT_URL = "postgres://auto:auto@localhost:5433/auto";
+export const DEFAULT_DB_PATH = ":memory:";
 
-export function connect(url = Bun.env.DATABASE_URL ?? DEFAULT_URL): Sql {
-  return new SQL(url);
+const blobsBySql = new WeakMap<object, Blobs>();
+const companyResolversBySql = new WeakMap<object, (companyId: string) => Promise<Sql>>();
+const blobsByTx = new WeakMap<object, Blobs>();
+
+export function registerBlobs(sql: Sql, blobs: Blobs): void {
+  blobsBySql.set(sql, blobs);
 }
 
-/**
- * Connexion des migrations : `DATABASE_URL_DIRECT` quand l'application passe par un pooler (Neon : PgBouncer
- * en mode transaction pour l'API et le worker, point d'accès direct pour le DDL et pg_dump), sinon `DATABASE_URL`.
- */
-export function connectMigrations(): Sql {
-  return new SQL(Bun.env.DATABASE_URL_DIRECT || Bun.env.DATABASE_URL || DEFAULT_URL, { max: 1 });
+export function registerCompanyResolver(sql: Sql, fn: (companyId: string) => Promise<Sql>): void {
+  companyResolversBySql.set(sql, fn);
 }
 
-const MIGRATIONS = Bun.env.AUTO_MIGRATIONS_DIR
-  ? Bun.pathToFileURL(`${Bun.env.AUTO_MIGRATIONS_DIR.replace(/[\\/]+$/, "")}/`)
-  : new URL("../migrations/", import.meta.url);
-
-/** Applique les migrations `migrations/NNN_*.sql` non encore appliquées, dans l'ordre. */
-export async function migrate(sql: Sql): Promise<string[]> {
-  const files = (await Array.fromAsync(new Bun.Glob("*.sql").scan(Bun.fileURLToPath(MIGRATIONS)))).sort();
-  // Le verrou couvre aussi la création de schema_migration et garantit l'ordre entre instances.
-  // Il est libéré automatiquement à la fin de la transaction, y compris en cas d'erreur.
-  return sql.begin(async (tx) => {
-    await tx`SELECT pg_advisory_xact_lock(1635087471, 1835624306)`;
-    await tx`CREATE TABLE IF NOT EXISTS schema_migration (
-    name text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`;
-    const done = new Map(
-      (await tx`SELECT name, checksum FROM schema_migration`).map((r: { name: string; checksum: string }) => [
-        r.name,
-        r.checksum,
-      ]),
-    );
-    const applied: string[] = [];
-    for (const name of files) {
-      const text = await Bun.file(new URL(name, MIGRATIONS)).text();
-      const checksum = new Bun.CryptoHasher("sha256").update(text).digest("hex");
-      const prev = done.get(name);
-      if (prev) {
-        if (prev !== checksum) throw new Error(`migration ${name} modifiée après application`);
-        continue;
-      }
-      await tx.unsafe(text);
-      await tx`INSERT INTO schema_migration (name, checksum) VALUES (${name}, ${checksum})`;
-      applied.push(name);
-    }
-    return applied;
-  });
+export function blobsOf(txOrSql: Tx): Blobs | undefined {
+  return blobsByTx.get(txOrSql) ?? blobsBySql.get(txOrSql);
 }
 
-/**
- * Exécute `fn` dans une transaction isolée sur un tenant : rôle `auto_app` (soumis à la RLS)
- * et `app.tenant` posé localement. Sans tenant, la RLS ne renvoie aucune ligne.
- */
-export function withTenant<T>(sql: Sql, tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
-  return sql.begin(async (tx) => {
-    await tx`SET LOCAL ROLE auto_app`;
-    await tx`SELECT set_config('app.tenant', ${tenantId}, true)`;
-    return fn(tx);
-  });
-}
-
-/** Base jetable pour les tests : créée, migrée, supprimée par `drop()`. */
-export async function testDb(url = Bun.env.DATABASE_URL ?? DEFAULT_URL) {
-  const admin = new SQL(url, { max: 1, idleTimeout: 2, connectionTimeout: 10 });
-  const name = `auto_test_${crypto.randomUUID().replaceAll("-", "")}`;
-  await admin.unsafe(`CREATE DATABASE ${name}`);
-  const u = new URL(url);
-  u.pathname = `/${name}`;
-  const sql = new SQL(u.toString(), { max: 4, idleTimeout: 5, connectionTimeout: 10 });
-  try {
-    await migrate(sql);
-  } catch (erreur) {
-    await sql.close();
-    try {
-      await admin.unsafe(`DROP DATABASE ${name} WITH (FORCE)`);
-    } finally {
-      await admin.close();
-    }
-    throw erreur;
+export function connect(path = process.env.AUTO_DB_PATH ?? DEFAULT_DB_PATH): Sql {
+  if (path.startsWith("postgres://") || path.startsWith("postgresql://")) {
+    return bunSqlite(":memory:");
   }
+  return bunSqlite(path);
+}
+
+const preloadedMigrations = new Map<string, string>();
+
+export function registerMigration(name: string, sqlText: string): void {
+  preloadedMigrations.set(name, sqlText);
+}
+
+async function readMigrationSql(name: string): Promise<string> {
+  const preloaded = preloadedMigrations.get(name);
+  if (preloaded !== undefined) return preloaded;
+  if (typeof Bun !== "undefined" && Array.isArray(Bun.embeddedFiles)) {
+    const emb = Bun.embeddedFiles.find(
+      (f) => f.name.endsWith(`/${name}`) || f.name.endsWith(`\\${name}`) || f.name === name,
+    );
+    if (emb) return await emb.text();
+  }
+  return readFileSync(join(import.meta.dir ?? ".", "../migrations", name), "utf8");
+}
+
+async function applyMigrations(sql: Sql, files: readonly string[]): Promise<string[]> {
+  if (!sql.execScript) throw new Error("SQL adapter missing execScript()");
+  await sql.execScript(
+    "CREATE TABLE IF NOT EXISTS schema_migration (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))",
+  );
+  const rows = await sql<{ version: string }[]>`SELECT version FROM schema_migration`;
+  const appliedSet = new Set(rows.map((r) => r.version));
+  const appliedNow: string[] = [];
+  for (const name of files) {
+    if (appliedSet.has(name)) continue;
+    const content = await readMigrationSql(name);
+    await sql.execScript(content);
+    await sql`INSERT OR IGNORE INTO schema_migration (version) VALUES (${name})`;
+    appliedNow.push(name);
+  }
+  return appliedNow;
+}
+
+export const migrateGlobal = (sql: Sql) => applyMigrations(sql, ["001_global.sql"]);
+export const migrateCompany = (sql: Sql) => applyMigrations(sql, ["002_company.sql"]);
+export const migrate = (sql: Sql) => applyMigrations(sql, ["001_global.sql", "002_company.sql"]);
+
+/**
+ * Execute `fn` inside a company transaction.
+ * In Serverless Cloudflare Workers, delegates to the `CompanyDO` SQLite instance registered for `sql`.
+ * In Self-Hosted or test environments, binds `companyId` onto the local SQLite transaction.
+ */
+export async function withCompany<T>(sql: Sql, companyId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const resolveCompanyDb = companyResolversBySql.get(sql);
+  const target = resolveCompanyDb ? await resolveCompanyDb(companyId) : sql;
+  const blobs = blobsBySql.get(target) ?? blobsBySql.get(sql);
+  return target.begin(async (tx) => {
+    if (blobs) blobsByTx.set(tx, blobs);
+    const wrapped = Object.assign(tx, { companyId }) as CompanyTx;
+    return fn(wrapped);
+  });
+}
+
+export async function readSite(tx: Tx): Promise<string> {
+  const [row] = await tx<{ value: string }[]>`SELECT value FROM _sync_state WHERE key = ${"site"}`;
+  return row?.value || "cloud";
+}
+
+export async function setSite(tx: Tx, site: string): Promise<void> {
+  if (!/^[a-z0-9][a-z0-9_-]{0,23}$/.test(site)) {
+    throw new StoreError(`Invalid site identifier: ${site}`, [], 400);
+  }
+  await tx`INSERT INTO _sync_state (key, value) VALUES (${"site"}, ${site})
+    ON CONFLICT (key) DO UPDATE SET value = excluded.value`;
+}
+
+export async function testDb(): Promise<{ sql: Sql; blobs: Blobs; dir: string; drop: () => Promise<void> }> {
+  const dir = mkdtempSync(join(tmpdir(), "auto-store-test-"));
+  const sql = bunSqlite(join(dir, "auto.sqlite"));
+  const blobs = dirBlobs(join(dir, "blobs"));
+  registerBlobs(sql, blobs);
+  await migrate(sql);
   return {
     sql,
-    async drop() {
+    blobs,
+    dir,
+    drop: async () => {
       await sql.close();
-      try {
-        await admin.unsafe(`DROP DATABASE ${name} WITH (FORCE)`);
-      } finally {
-        await admin.close();
-      }
+      rmSync(dir, { recursive: true, force: true });
     },
   };
 }

@@ -1,16 +1,25 @@
 [package]
 name = "auto-facturx"
-version = "0.0.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Factur-X (profil EN 16931) : XML CII, PDF/A-3b avec XML embarqué, extraction"
 
 [dependencies]
-auto-modele = { path = "../auto-modele" }
-pdfcraft-cos.workspace = true
-pdfcraft-preflight.workspace = true
+auto-i18n = { path = "../auto-i18n" }
+auto-model = { path = "../auto-model" }
+chrono.workspace = true
+craft-pdf.workspace = true
+flate2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-pdfcraft-create.workspace = true
+auto-docs = { path = "../auto-docs" }
+
+[[example]]
+name = "samples"
+path = "examples/samples.rs"
+
+[[test]]
+name = "facturx"
+path = "tests/facturx.rs"

@@ -1,6 +1,6 @@
-import { connectMigrations, migrate } from "./db";
+import { connect, migrate } from "./db";
 
-const sql = connectMigrations();
+const sql = connect();
 const applied = await migrate(sql);
-console.log(applied.length ? `migrations appliquées : ${applied.join(", ")}` : "schéma à jour");
+console.log(applied.length ? `Applied migrations: ${applied.join(", ")}` : "Database schema up to date");
 await sql.close();

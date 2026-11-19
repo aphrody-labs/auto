@@ -1,99 +1,177 @@
-export type Tva = 0 | 21 | 55 | 100 | 200; // taux en dixièmes de % : 0, 2,1, 5,5, 10, 20
+// Core business domain model aligned 1:1 with Rust `auto-model` (`#11`) and legal invoicing rules.
+import { t, type Locale } from "@aphrody/auto-platform/i18n";
 
-export interface Ligne {
-  designation: string;
-  quantite: number;
-  prixUnitaireHtCents: number;
-  /** Remise sur la ligne en points de base : 1000 = 10 %. */
-  remiseBp?: number;
-  tva: Tva;
-  unite?: string;
+export const VALID_VAT_RATES = [0, 21, 55, 100, 200] as const;
+/** VAT rate in tenths of a percent: 0, 2.1, 5.5, 10, 20 %. */
+export type VatRate = (typeof VALID_VAT_RATES)[number];
+
+export function validVatRate(value: unknown): value is VatRate {
+  return typeof value === "number" && VALID_VAT_RATES.includes(value as VatRate);
 }
 
-export interface Partie {
-  nom: string;
-  siret: string;
-  adresse: string;
-  adresseLivraison?: string;
-  tvaIntracom?: string;
+export interface LineItem {
+  description: string;
+  quantity: number;
+  unitPriceExclVatCents: number;
+  vat: VatRate;
+  unit?: string;
+  /** Line discount in basis points: 1000 = 10 %. */
+  discountBp?: number;
+}
+
+export interface Party {
+  name: string;
+  /** SIRET (14 digits) or national registration identifier. */
+  taxId?: string;
+  address: string;
+  deliveryAddress?: string;
+  vatNumber?: string;
   email?: string;
 }
 
-/** devis ; facture (380) ; acompte (386) ; avoir (381). */
-export type Type = "devis" | "facture" | "acompte" | "avoir";
+/** quote; invoice (380); deposit (386); credit_note (381). */
+export const DOCUMENT_TYPES = ["quote", "invoice", "deposit", "credit_note"] as const;
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
-export type Statut = "brouillon" | "emis" | "envoye" | "accepte" | "refuse" | "depose" | "rejete" | "paye" | "annule";
+export const DOCUMENT_STATUSES = [
+  "draft",
+  "issued",
+  "sent",
+  "accepted",
+  "declined",
+  "submitted",
+  "rejected",
+  "paid",
+  "cancelled",
+] as const;
+export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
+
+export interface Logo {
+  mime: string;
+  dataBase64: string;
+}
+
+/** Tenant visual styling applied at render time (never stored inside immutable document JSON). */
+export interface Template {
+  color?: string;
+  logo?: Logo;
+  width?: number;
+  height?: number;
+  footer?: string;
+}
 
 export interface Document {
-  type: Type;
-  date: string; // ISO, date d'émission
-  emetteur: Partie;
-  client: Partie;
-  lignes: Ligne[];
-  datePrestation?: string;
-  echeance?: string;
-  conditionsPaiement?: string;
-  /** Taux des pénalités de retard, ex. « 3 fois le taux d'intérêt légal ». */
-  penalitesRetard?: string;
-  /** Conditions d'escompte, ou « aucun escompte ». */
-  escompte?: string;
-  /** Franchise en base de TVA (art. 293 B du CGI). */
-  franchiseTva?: boolean;
-  /** Avoir : numéro de la facture rectifiée. Facture : numéro du devis d'origine. */
-  origine?: string;
-  validiteJours?: number; // devis
+  number?: string;
+  type: DocumentType;
+  /** ISO date YYYY-MM-DD (issue date). */
+  date: string;
+  issuer: Party;
+  customer: Party;
+  lines: LineItem[];
+  serviceDate?: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  latePenalties?: string;
+  earlyDiscount?: string;
+  /** VAT exemption scheme (France CGI art. 293 B). */
+  vatExempt?: boolean;
+  /** Credit note: credited invoice number. Invoice: source quote number. */
+  origin?: string;
+  validityDays?: number;
   notes?: string;
-  /** Mise en forme du tenant, ajoutée au rendu (jamais stockée dans le document). */
-  gabarit?: Gabarit;
+  template?: Template;
+  locale?: Locale;
 }
 
-export const MENTION_FRANCHISE = "TVA non applicable, art. 293 B du CGI";
-export const INDEMNITE_RECOUVREMENT_CENTS = 4000;
-export const PENALITES_DEFAUT = "3 fois le taux d'intérêt légal";
-
-/** Mise en forme d'un tenant : couleur d'accent, logo JPEG RVB en base64, ligne de pied de page. */
-export interface Gabarit {
-  couleur?: string;
-  logo?: { jpeg: string; largeur: number; hauteur: number };
-  piedDePage?: string;
+export interface RateTotals {
+  rate: number;
+  baseExclVatCents: number;
+  vatCents: number;
 }
 
-export interface Totaux {
-  htCents: number;
-  tvaParTaux: Record<number, number>;
-  tvaCents: number;
-  ttcCents: number;
+export interface Totals {
+  totalExclVatCents: number;
+  totalVatCents: number;
+  totalInclVatCents: number;
+  byRate: RateTotals[];
+  vatByRate: Record<number, number>;
 }
 
-/** HT brut d'une ligne (avant remise). */
-export const brutLigne = (l: Ligne) => Math.round(l.quantite * l.prixUnitaireHtCents);
+export const VAT_EXEMPT_NOTICE = "TVA non applicable, art. 293 B du CGI";
+export const RECOVERY_FEE_CENTS = 4000;
+export const DEFAULT_LATE_PENALTIES = "3 times the statutory interest rate";
+export const SITE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 
-/** HT net d'une ligne : même ordre d'opérations que auto-modele (Rust) pour des totaux identiques. */
-export const htLigne = (l: Ligne) =>
-  Math.round((l.quantite * l.prixUnitaireHtCents * (10000 - (l.remiseBp ?? 0))) / 10000);
+export const ISSUED_TRANSITIONS: Record<DocumentType, Partial<Record<DocumentStatus, readonly DocumentStatus[]>>> = {
+  quote: {
+    issued: ["sent", "accepted", "declined", "cancelled"],
+    sent: ["accepted", "declined", "cancelled"],
+    accepted: [],
+    declined: [],
+    cancelled: [],
+  },
+  invoice: {
+    issued: ["sent", "submitted", "paid", "cancelled"],
+    sent: ["submitted", "paid", "cancelled"],
+    submitted: ["rejected", "paid"],
+    rejected: ["submitted", "cancelled"],
+    paid: [],
+    cancelled: [],
+  },
+  deposit: {
+    issued: ["sent", "submitted", "paid", "cancelled"],
+    sent: ["submitted", "paid", "cancelled"],
+    submitted: ["rejected", "paid"],
+    rejected: ["submitted", "cancelled"],
+    paid: [],
+    cancelled: [],
+  },
+  credit_note: {
+    issued: ["sent", "submitted", "paid"],
+    sent: ["submitted", "paid"],
+    submitted: ["rejected", "paid"],
+    rejected: ["submitted"],
+    paid: [],
+  },
+};
 
-export function totaux(lignes: Ligne[]): Totaux {
-  const baseParTaux = new Map<number, number>();
-  for (const l of lignes) {
-    const ht = htLigne(l);
-    baseParTaux.set(l.tva, (baseParTaux.get(l.tva) ?? 0) + ht);
+/** Gross line amount excl. VAT before discount. */
+export const lineGrossExclVat = (line: LineItem): number => Math.round(line.quantity * line.unitPriceExclVatCents);
+
+/** Net line amount excl. VAT using the exact rounding order of `auto-model` (Rust). */
+export const lineNetExclVat = (line: LineItem): number =>
+  Math.round((line.quantity * line.unitPriceExclVatCents * (10000 - (line.discountBp ?? 0))) / 10000);
+
+export function computeTotals(lines: LineItem[]): Totals {
+  const baseByRate = new Map<number, number>();
+  for (const line of lines) {
+    const net = lineNetExclVat(line);
+    baseByRate.set(line.vat, (baseByRate.get(line.vat) ?? 0) + net);
   }
-  let htCents = 0;
-  let tvaCents = 0;
-  const tvaParTaux: Record<number, number> = {};
-  for (const [taux, base] of baseParTaux) {
-    const tva = Math.round((base * taux) / 1000);
-    tvaParTaux[taux] = tva;
-    htCents += base;
-    tvaCents += tva;
+  let totalExclVatCents = 0;
+  let totalVatCents = 0;
+  const vatByRate: Record<number, number> = {};
+  const byRate: RateTotals[] = [];
+  for (const [rate, baseExclVatCents] of [...baseByRate.entries()].sort((a, b) => a[0] - b[0])) {
+    const vatCents = Math.round((baseExclVatCents * rate) / 1000);
+    vatByRate[rate] = vatCents;
+    byRate.push({ rate, baseExclVatCents, vatCents });
+    totalExclVatCents += baseExclVatCents;
+    totalVatCents += vatCents;
   }
-  return { htCents, tvaParTaux, tvaCents, ttcCents: htCents + tvaCents };
+  return {
+    totalExclVatCents,
+    totalVatCents,
+    totalInclVatCents: totalExclVatCents + totalVatCents,
+    byRate,
+    vatByRate,
+  };
 }
 
-function luhn(s: string): boolean {
+function luhn(digits: string): boolean {
   let sum = 0;
-  for (let i = 0; i < s.length; i++) {
-    let d = Number(s[s.length - 1 - i]);
+  for (let i = 0; i < digits.length; i++) {
+    let d = Number(digits[digits.length - 1 - i]);
     if (i % 2 === 1) {
       d *= 2;
       if (d > 9) d -= 9;
@@ -103,100 +181,180 @@ function luhn(s: string): boolean {
   return sum % 10 === 0;
 }
 
-/** SIRET : 14 chiffres, clé de Luhn. */
-export function siretValide(siret: string): boolean {
+/** Valid French SIRET (14 digits, Luhn check). */
+export function validSiret(siret: string): boolean {
   const s = siret.replace(/\s/g, "");
   return /^\d{14}$/.test(s) && luhn(s);
 }
 
-/** SIREN : 9 chiffres, clé de Luhn. */
-export function sirenValide(siren: string): boolean {
+/** Valid French SIREN (9 digits, Luhn check). */
+export function validSiren(siren: string): boolean {
   const s = siren.replace(/\s/g, "");
   return /^\d{9}$/.test(s) && luhn(s);
 }
 
-/** TVA intracommunautaire française : FR + clé (2 chiffres) + SIREN. */
-export function tvaIntracomFr(siren: string): string {
-  const n = BigInt(siren.replace(/\s/g, ""));
-  const cle = (12n + 3n * (n % 97n)) % 97n;
-  return `FR${String(cle).padStart(2, "0")}${siren.replace(/\s/g, "")}`;
-}
-
-/** Série de numérotation : factures et acomptes partagent la série F. */
-export function serie(type: Type): "D" | "F" | "A" {
-  return type === "devis" ? "D" : type === "avoir" ? "A" : "F";
-}
-
-/** Numérotation continue sans trou, par série et par année : F-2026-0001. */
-export function numero(type: Type, annee: number, seq: number): string {
-  return `${serie(type)}-${annee}-${String(seq).padStart(4, "0")}`;
-}
-
-const estFacture = (t: Type) => t !== "devis";
-
-/** Mentions obligatoires manquantes ou incohérentes (liste vide = ok). */
-export function verifier(doc: Document): string[] {
-  const e: string[] = [];
-  if (!siretValide(doc.emetteur.siret)) e.push("siret émetteur invalide");
-  if (!doc.emetteur.adresse) e.push("adresse émetteur manquante");
-  if (!doc.client.nom || !doc.client.adresse) e.push("nom ou adresse client manquant");
-  if (doc.lignes.length === 0) e.push("aucune ligne");
-  for (const [i, l] of doc.lignes.entries()) {
-    if (!l.designation) e.push(`ligne ${i + 1} : désignation manquante`);
-    if (!(l.quantite > 0)) e.push(`ligne ${i + 1} : quantité invalide`);
-    if (l.remiseBp !== undefined && !(Number.isInteger(l.remiseBp) && l.remiseBp >= 0 && l.remiseBp <= 10000))
-      e.push(`ligne ${i + 1} : remise invalide`);
+/** Valid EU intra-community VAT number (2-letter country prefix + 2..12 alphanumeric chars). */
+export function validVatNumber(vat: string): boolean {
+  const cleaned = vat.replace(/\s/g, "").toUpperCase();
+  if (!/^[A-Z]{2}[A-Z0-9]{2,12}$/.test(cleaned)) return false;
+  if (cleaned.startsWith("FR")) {
+    const rest = cleaned.slice(2);
+    if (!/^[0-9A-HJ-NP-Z]{2}\d{9}$/.test(rest)) return false;
+    const siren = rest.slice(2);
+    if (!validSiren(siren)) return false;
+    if (/^\d{2}$/.test(rest.slice(0, 2))) return cleaned === frVatNumber(siren);
   }
-  if (doc.franchiseTva) {
-    if (doc.lignes.some((l) => l.tva !== 0)) e.push("franchise en base : toutes les lignes doivent être à 0 % de TVA");
-  } else if (!doc.emetteur.tvaIntracom) {
-    e.push("n° de TVA intracommunautaire émetteur manquant");
-  }
-  if (estFacture(doc.type)) {
-    if (doc.client.siret && !siretValide(doc.client.siret)) e.push("siret client invalide");
-    if (!doc.echeance) e.push("date d'échéance manquante");
-    if (!doc.datePrestation) e.push("date de livraison ou de prestation manquante");
-    if (!doc.penalitesRetard) e.push("taux des pénalités de retard manquant");
-    if (!doc.escompte) e.push("conditions d'escompte manquantes");
-  }
-  if (doc.type === "avoir" && !doc.origine) e.push("avoir : facture d'origine manquante");
-  return e;
+  return true;
 }
 
-/** Valeurs par défaut des mentions légales d'une facture. */
-export function avecMentionsParDefaut(doc: Document): Document {
-  if (!estFacture(doc.type)) return doc;
+/** Compute French intra-community VAT number: FR + 2-digit key + SIREN. */
+export function frVatNumber(siren: string): string {
+  const clean = siren.replace(/\s/g, "");
+  const n = BigInt(clean);
+  const key = (12n + 3n * (n % 97n)) % 97n;
+  return `FR${String(key).padStart(2, "0")}${clean}`;
+}
+
+export type DocumentSeries = "QUO" | "INV" | "CN";
+
+/** Gapless numbering series: invoices and deposits share the `INV` series. */
+export function seriesForType(type: DocumentType): DocumentSeries {
+  if (type === "quote") return "QUO";
+  if (type === "credit_note") return "CN";
+  return "INV";
+}
+
+/** Site-scoped gapless numbering: `INV-2026-0001` on cloud, or `INV-<site>-2026-0001` on edge sites. */
+export function formatDocumentNumber(type: DocumentType, year: number, seq: number, site = "cloud"): string {
+  const series = seriesForType(type);
+  const n = String(seq).padStart(4, "0");
+  if (!site || site === "cloud") return `${series}-${year}-${n}`;
+  if (!SITE_ID_PATTERN.test(site)) throw new Error(`Invalid site identifier: ${site}`);
+  return `${series}-${site}-${year}-${n}`;
+}
+
+const isInvoiceFamily = (type: DocumentType) => type !== "quote";
+
+/** Verify mandatory fields and invariants on a document (empty array = valid). */
+export function verifyDocument(doc: Document, locale: Locale = "en"): string[] {
+  const errors: string[] = [];
+  if (!doc.issuer?.taxId || !validSiret(doc.issuer.taxId)) {
+    errors.push(t(locale, "Invalid issuer tax ID (SIRET)"));
+  }
+  if (!doc.issuer?.address?.trim()) {
+    errors.push(t(locale, "Missing issuer address"));
+  }
+  if (!doc.customer?.name?.trim() || !doc.customer?.address?.trim()) {
+    errors.push(t(locale, "Missing customer name or address"));
+  }
+  if (!doc.lines || doc.lines.length === 0) {
+    errors.push(t(locale, "At least one line item is required"));
+  } else {
+    for (const [i, line] of doc.lines.entries()) {
+      const idx = i + 1;
+      if (!line.description?.trim()) errors.push(t(locale, "Line {n}: missing description", { n: idx }));
+      if (!(line.quantity > 0)) errors.push(t(locale, "Line {n}: invalid quantity", { n: idx }));
+      if (
+        line.discountBp !== undefined &&
+        !(Number.isInteger(line.discountBp) && line.discountBp >= 0 && line.discountBp <= 10000)
+      ) {
+        errors.push(t(locale, "Line {n}: invalid discount", { n: idx }));
+      }
+      if (!validVatRate(line.vat)) errors.push(t(locale, "Line {n}: invalid VAT rate", { n: idx }));
+    }
+  }
+  if (doc.vatExempt) {
+    if (doc.lines.some((l) => l.vat !== 0)) {
+      errors.push(t(locale, "VAT exemption requires 0% VAT on all lines"));
+    }
+  } else if (!doc.issuer?.vatNumber?.trim()) {
+    errors.push(t(locale, "Missing issuer VAT number"));
+  }
+  if (isInvoiceFamily(doc.type)) {
+    if (doc.customer?.taxId && !validSiret(doc.customer.taxId)) {
+      errors.push(t(locale, "Invalid customer tax ID (SIRET)"));
+    }
+    if (!doc.dueDate) errors.push(t(locale, "Missing due date"));
+    if (!doc.serviceDate) errors.push(t(locale, "Missing supply or service date"));
+    if (!doc.latePenalties) errors.push(t(locale, "Missing late payment penalty terms"));
+    if (!doc.earlyDiscount) errors.push(t(locale, "Missing early payment discount terms"));
+  }
+  if (doc.type === "credit_note" && !doc.origin) {
+    errors.push(t(locale, "Credit note requires an origin invoice number"));
+  }
+  return errors;
+}
+
+export function verifyCustomer(c: Partial<Party>, locale: Locale = "en"): string[] {
+  const errors: string[] = [];
+  if (!c.name?.trim()) errors.push(t(locale, "Customer name is required"));
+  if (!c.address?.trim()) errors.push(t(locale, "Customer address is required"));
+  if (c.taxId?.trim() && !validSiret(c.taxId) && !validSiren(c.taxId)) {
+    errors.push(t(locale, "Invalid tax ID (9-digit SIREN or 14-digit SIRET expected)"));
+  }
+  if (c.email?.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email.trim())) {
+    errors.push(t(locale, "Invalid customer email"));
+  }
+  return errors;
+}
+
+export function verifyProduct(
+  p: { description?: string; unitPriceExclVatCents?: number; vat?: unknown },
+  locale: Locale = "en",
+): string[] {
+  const errors: string[] = [];
+  if (!p.description?.trim()) errors.push(t(locale, "Product description is required"));
+  if (!Number.isSafeInteger(p.unitPriceExclVatCents) || (p.unitPriceExclVatCents ?? -1) < 0) {
+    errors.push(t(locale, "Unit price excl. VAT must be a non-negative integer in cents"));
+  }
+  if (!validVatRate(p.vat)) {
+    errors.push(t(locale, "Invalid VAT rate"));
+  }
+  return errors;
+}
+
+/** Apply statutory default payment/penalty terms on invoices, deposits, and credit notes. */
+export function withDefaultLegalTerms(doc: Document, locale: Locale = "en"): Document {
+  if (!isInvoiceFamily(doc.type)) return doc;
+  const effLocale = doc.locale ?? locale;
   return {
     ...doc,
-    penalitesRetard: doc.penalitesRetard ?? PENALITES_DEFAUT,
-    escompte: doc.escompte ?? "Pas d'escompte pour paiement anticipé",
-    conditionsPaiement: doc.conditionsPaiement ?? "Paiement à 30 jours",
+    latePenalties:
+      doc.latePenalties ?? (effLocale === "fr" ? "3 fois le taux d'intérêt légal" : DEFAULT_LATE_PENALTIES),
+    earlyDiscount:
+      doc.earlyDiscount ??
+      (effLocale === "fr" ? "Pas d'escompte pour paiement anticipé" : "No discount for early payment"),
+    paymentTerms: doc.paymentTerms ?? (effLocale === "fr" ? "Paiement à 30 jours" : "Payment due within 30 days"),
   };
 }
 
-/** Facture issue d'un devis accepté. */
-export function devisVersFacture(devis: Document, numeroDevis: string, date: string, echeance: string): Document {
-  if (devis.type !== "devis") throw new Error("le document source n'est pas un devis");
-  const { validiteJours: _, ...rest } = devis;
-  return avecMentionsParDefaut({ ...rest, type: "facture", date, echeance, origine: numeroDevis });
+/** Convert an accepted quote into a draft invoice. */
+export function quoteToInvoice(quote: Document, quoteNumber: string, date: string, dueDate: string): Document {
+  if (quote.type !== "quote") throw new Error("Source document is not a quote");
+  const { validityDays: _, number: __, ...rest } = quote;
+  return withDefaultLegalTerms({ ...rest, type: "invoice", date, dueDate, origin: quoteNumber });
 }
 
-/** Avoir total annulant une facture. */
-export function avoirTotal(facture: Document, numeroFacture: string, date: string): Document {
-  if (facture.type === "devis" || facture.type === "avoir")
-    throw new Error("seule une facture peut être annulée par un avoir");
-  return { ...facture, type: "avoir", date, origine: numeroFacture };
+/** Create a full credit note cancelling an issued invoice or deposit. */
+export function fullCreditNote(invoice: Document, invoiceNumber: string, date: string): Document {
+  if (invoice.type === "quote" || invoice.type === "credit_note") {
+    throw new Error("Only an invoice or deposit can be cancelled by a credit note");
+  }
+  const { number: _, ...rest } = invoice;
+  return { ...rest, type: "credit_note", date, origin: invoiceNumber };
 }
 
-/** Avoir partiel : seules les lignes (ou quantités) rectifiées de la facture. */
-export function avoirPartiel(facture: Document, numeroFacture: string, date: string, lignes: Ligne[]): Document {
-  if (facture.type === "devis" || facture.type === "avoir")
-    throw new Error("seule une facture peut être rectifiée par un avoir");
-  if (lignes.length === 0) throw new Error("avoir partiel sans ligne");
-  return { ...facture, type: "avoir", date, origine: numeroFacture, lignes };
+/** Create a partial credit note correcting specific line items of an issued invoice. */
+export function partialCreditNote(invoice: Document, invoiceNumber: string, date: string, lines: LineItem[]): Document {
+  if (invoice.type === "quote" || invoice.type === "credit_note") {
+    throw new Error("Only an invoice or deposit can be credited");
+  }
+  if (lines.length === 0) throw new Error("Partial credit note requires at least one line item");
+  const { number: _, ...rest } = invoice;
+  return { ...rest, type: "credit_note", date, origin: invoiceNumber, lines };
 }
 
-export const eur = (cents: number) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-export * from "./rh";
-export * from "./compta";
+export const formatEur = (cents: number, locale: Locale = "en"): string =>
+  new Intl.NumberFormat(locale === "fr" ? "fr-FR" : "en-IE", { style: "currency", currency: "EUR" }).format(
+    cents / 100,
+  );

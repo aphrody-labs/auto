@@ -1,16 +1,25 @@
 [package]
 name = "auto-sheets"
-version = "0.0.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Tableurs : lecture xlsx/xls/xlsb/ods/csv et écriture xlsx typée (gridcraft)"
 
 [dependencies]
-gridcraft-core.workspace = true
-gridcraft-calc.workspace = true
-gridcraft-model.workspace = true
-gridcraft-xlsx.workspace = true
+craft-csv.workspace = true
+craft-ods.workspace = true
+craft-opc.workspace = true
+craft-sheet.workspace = true
+craft-xls.workspace = true
+craft-xlsx.workspace = true
+craft-xml.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 thiserror.workspace = true
+
+[[example]]
+name = "example"
+path = "examples/example.rs"
+
+[[test]]
+name = "spreadsheets"
+path = "tests/spreadsheets.rs"

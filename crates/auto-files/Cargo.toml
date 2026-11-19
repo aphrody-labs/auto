@@ -1,0 +1,17 @@
+[package]
+name = "auto-files"
+version = "0.2.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+auto-docs = { path = "../auto-docs" }
+craft-docx.workspace = true
+craft-pdf.workspace = true
+craft-pkcs7.workspace = true
+craft-pptx.workspace = true
+craft-wordmodel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

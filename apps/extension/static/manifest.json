@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "auto : factures fournisseurs",
-  "short_name": "auto",
-  "version": "0.1.0",
-  "description": "Envoie en un clic droit une facture PDF ou Factur-X à auto, et affiche les factures fournisseurs à vérifier.",
+  "name": "Auto: Supplier Invoices",
+  "short_name": "Auto",
+  "version": "2026.11.5",
+  "description": "One-click upload of PDF or Factur-X invoices to Auto with live pending review badge.",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",
@@ -12,7 +12,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "auto",
+    "default_title": "Auto",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

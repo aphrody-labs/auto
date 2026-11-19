@@ -1,0 +1,22 @@
+{
+  "name": "@aphrody/auto-platform",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bun": "./src/bun.ts",
+    "./cloudflare": "./src/cloudflare.ts",
+    "./llm": "./src/llm.ts",
+    "./i18n": "./src/i18n.ts"
+  },
+  "dependencies": {
+    "@aphrody/auto-i18n": "workspace:*",
+    "@orpc/openapi": "^1.16.2",
+    "@orpc/server": "^1.16.2",
+    "@orpc/zod": "^1.16.2",
+    "h3": "^2.0.8",
+    "srvx": "^1.0.8"
+  }
+}

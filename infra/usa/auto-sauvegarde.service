@@ -1,8 +1,0 @@
-[Unit]
-Description=Sauvegarde nocturne d'auto (Postgres chiffré et seau RustFS)
-Requires=docker.service
-After=docker.service
-
-[Service]
-Type=oneshot
-ExecStart=/srv/auto/sauvegarde.sh

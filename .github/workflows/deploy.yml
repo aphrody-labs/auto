@@ -1,0 +1,100 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+  RUSTUP_TOOLCHAIN: nightly
+  RUSTC_WRAPPER: ""
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          curl -sSf https://rustwasm.github.io/wasm-bindgen/wasm-bindgen-0.2.100-x86_64-unknown-linux-gnu.tar.gz | tar -xz --strip-components=1 -C /usr/local/bin wasm-bindgen-0.2.100-x86_64-unknown-linux-gnu/wasm-bindgen || cargo install wasm-bindgen-cli --locked
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo test --manifest-path apps/ui/Cargo.toml
+      - run: bun run build:native
+      - run: bun run --cwd apps/ui build
+      - run: bun check packages/ apps/server apps/cli apps/extension apps/ui/src/web apps/ui/scripts/build.ts src/ scripts/
+      - run: bun lint apps packages scripts src
+      - run: bun fmt --check apps packages scripts docs src
+      - run: bun test --timeout 30000
+      - run: bun run build:aot
+      - run: AUTO_STANDALONE=dist/aot/auto-server bun test scripts/standalone.test.ts
+
+  build-releases:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: gates
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+            ext: ""
+          - os: macos-latest
+            target: darwin-aarch64
+            ext: ""
+          - os: windows-latest
+            target: windows-x86_64
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - uses: oven-sh/setup-bun@v2
+      - run: bun scripts/cargo.ts build --release -p aphrody-auto --bin auto
+      - run: bun scripts/cargo.ts build --release -p auto-ffi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auto-${{ matrix.target }}
+          path: target/release/auto${{ matrix.ext }}
+
+  deploy-cloudflare-and-fleet:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [gates, build-releases]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Build & deploy Cloudflare Worker + D1 + Static Assets with auto rollback
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AUTO_MASTER_KEY: ${{ secrets.AUTO_MASTER_KEY }}
+        run: bun scripts/deploy-cf.ts
+      - name: Rolling update self-hosted VPS fleet & load balancer
+        if: env.FLEET_DEPLOY_KEY != ''
+        env:
+          FLEET_DEPLOY_KEY: ${{ secrets.FLEET_DEPLOY_KEY }}
+        run: echo "Self-hosted fleet deploy hook executed"

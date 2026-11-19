@@ -1,0 +1,3 @@
+[submodule "third_party/better-auth"]
+	path = third_party/better-auth
+	url = https://github.com/aphrody-labs/better-auth.git

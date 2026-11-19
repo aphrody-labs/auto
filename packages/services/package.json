@@ -1,23 +1,25 @@
 {
-  "name": "@auto/services",
-  "version": "0.0.0",
+  "name": "@aphrody/auto-services",
+  "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/evenements.ts",
-    "./*": "./src/*.ts"
+    ".": "./src/index.ts",
+    "./events": "./src/events.ts",
+    "./ingest": "./src/ingest.ts",
+    "./mail": "./src/mail.ts",
+    "./einvoicing": "./src/einvoicing.ts",
+    "./billing": "./src/billing.ts",
+    "./automations": "./src/automations.ts",
+    "./studio": "./src/studio.ts",
+    "./agent": "./src/agent.ts"
   },
   "dependencies": {
-    "@auto/automate": "workspace:*",
-    "@auto/billing": "workspace:*",
-    "@auto/domain": "workspace:*",
-    "@auto/ingest": "workspace:*",
-    "@auto/mail": "workspace:*",
-    "@auto/native": "workspace:*",
-    "@auto/pa": "workspace:*",
-    "@auto/store": "workspace:*",
-    "@auto/tenancy": "workspace:*",
-    "quickjs-emscripten": "^0.32.0"
+    "@aphrody/auto-domain": "workspace:*",
+    "@aphrody/auto-i18n": "workspace:*",
+    "@aphrody/auto-native": "workspace:*",
+    "@aphrody/auto-platform": "workspace:*",
+    "@aphrody/auto-store": "workspace:*"
   }
 }

@@ -1,91 +1,89 @@
 /// <reference types="chrome" />
-// Popup : réglages (instance, jeton API) testés contre /v1/moi, et état des factures à vérifier.
-import { INSTANCE_PAR_DEFAUT, erreurApi, jetonValide, motifHote, normaliserInstance } from "./lib";
+import { DEFAULT_INSTANCE, formatApiError, hostPattern, isValidApiToken, normalizeInstance } from "./lib";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const form = $<HTMLFormElement>("reglages");
-const champInstance = $<HTMLInputElement>("instance");
-const champJeton = $<HTMLInputElement>("jeton");
-const erreur = $<HTMLParagraphElement>("erreur");
-const bouton = $<HTMLButtonElement>("enregistrer");
+const form = $<HTMLFormElement>("settings-form");
+const instanceField = $<HTMLInputElement>("instance");
+const tokenField = $<HTMLInputElement>("token");
+const errorEl = $<HTMLParagraphElement>("error");
+const submitBtn = $<HTMLButtonElement>("save-btn");
 
-function afficherErreur(message: string | null, champ?: HTMLInputElement) {
-  for (const c of [champInstance, champJeton]) c.removeAttribute("aria-invalid");
-  erreur.hidden = !message;
-  erreur.textContent = message ?? "";
-  if (champ) {
-    champ.setAttribute("aria-invalid", "true");
-    champ.setAttribute("aria-errormessage", "erreur");
-    champ.focus();
+function showError(msg: string | null, field?: HTMLInputElement) {
+  for (const el of [instanceField, tokenField]) el.removeAttribute("aria-invalid");
+  errorEl.hidden = !msg;
+  errorEl.textContent = msg ?? "";
+  if (field) {
+    field.setAttribute("aria-invalid", "true");
+    field.setAttribute("aria-errormessage", "error");
+    field.focus();
   }
 }
 
-async function afficherEtat() {
-  const s = await chrome.storage.local.get(["instance", "jeton", "aVerifier", "entreprise", "erreurBadge"]);
-  const instance = (s.instance as string) || INSTANCE_PAR_DEFAUT;
-  champInstance.value = instance;
-  const resume = $("resume");
-  const ouvrir = $<HTMLAnchorElement>("ouvrir");
-  if (!s.jeton) {
-    resume.textContent = "Extension non configurée : renseignez votre jeton API ci-dessous.";
-    ouvrir.hidden = true;
+async function renderStatus() {
+  const s = await chrome.storage.local.get(["instance", "token", "pendingReview", "companyName", "badgeError"]);
+  const instance = (s.instance as string) || DEFAULT_INSTANCE;
+  instanceField.value = instance;
+  const summary = $("summary");
+  const openBtn = $<HTMLAnchorElement>("open-link");
+  if (!s.token) {
+    summary.textContent = "Extension not configured: enter your Auto API token below.";
+    openBtn.hidden = true;
     return;
   }
-  const n = Number(s.aVerifier ?? 0);
-  const qui = s.entreprise ? `${s.entreprise} : ` : "";
-  resume.textContent = s.erreurBadge
-    ? `Connexion à ${new URL(instance).host} impossible : ${s.erreurBadge}`
-    : `${qui}${n === 0 ? "aucune facture à vérifier." : `${n} facture(s) à vérifier.`}`;
-  ouvrir.href = `${instance}/app/achats`;
-  ouvrir.hidden = false;
+  const n = Number(s.pendingReview ?? 0);
+  const org = s.companyName ? `${s.companyName}: ` : "";
+  summary.textContent = s.badgeError
+    ? `Cannot reach ${new URL(instance).host}: ${s.badgeError}`
+    : `${org}${n === 0 ? "no invoices awaiting review." : `${n} invoice(s) awaiting review.`}`;
+  openBtn.href = `${instance}/app/inbox`;
+  openBtn.hidden = false;
 }
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   let instance: string;
   try {
-    instance = normaliserInstance(champInstance.value || INSTANCE_PAR_DEFAUT);
+    instance = normalizeInstance(instanceField.value || DEFAULT_INSTANCE);
   } catch (err) {
-    afficherErreur((err as Error).message, champInstance);
+    showError((err as Error).message, instanceField);
     return;
   }
-  const jeton = champJeton.value.trim();
-  if (!jetonValide(jeton)) {
-    afficherErreur("Jeton invalide : il commence par « auto_ ».", champJeton);
+  const token = tokenField.value.trim();
+  if (!isValidApiToken(token)) {
+    showError("Invalid token format: expected prefix auto_", tokenField);
     return;
   }
-  // Une instance autre que auto.aphrody.com demande son autorisation dans le geste de l'utilisateur, avant tout await.
-  const autorisation =
-    instance === INSTANCE_PAR_DEFAUT
+  const perm =
+    instance === DEFAULT_INSTANCE
       ? Promise.resolve(true)
-      : chrome.permissions.request({ origins: [motifHote(instance)] });
+      : chrome.permissions.request({ origins: [hostPattern(instance)] });
   void (async () => {
-    bouton.disabled = true;
-    bouton.textContent = "Test en cours…";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Testing connection...";
     try {
-      if (!(await autorisation)) {
-        afficherErreur("Accès à l'instance refusé : rien n'a été enregistré.");
+      if (!(await perm)) {
+        showError("Host permission rejected.");
         return;
       }
-      const r = await fetch(`${instance}/v1/moi`, { headers: { authorization: `Bearer ${jeton}` } });
-      const corps = await r.json().catch(() => null);
-      if (!r.ok) {
-        afficherErreur(erreurApi(r.status, corps), r.status === 401 ? champJeton : undefined);
+      const res = await fetch(`${instance}/v1/me`, { headers: { authorization: `Bearer ${token}` } });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        showError(formatApiError(res.status, body), res.status === 401 ? tokenField : undefined);
         return;
       }
-      const moi = corps as { entreprise?: { nom?: string } };
-      await chrome.storage.local.set({ instance, jeton, entreprise: moi.entreprise?.nom ?? null });
-      champJeton.value = "";
-      afficherErreur(null);
-      await chrome.runtime.sendMessage({ type: "majBadge" });
-      await afficherEtat();
+      const me = body as { companies?: { name?: string }[] };
+      await chrome.storage.local.set({ instance, token, companyName: me.companies?.[0]?.name ?? null });
+      tokenField.value = "";
+      showError(null);
+      await chrome.runtime.sendMessage({ type: "refreshBadge" });
+      await renderStatus();
     } catch (err) {
-      afficherErreur(`Instance injoignable : ${(err as Error).message}`, champInstance);
+      showError(`Instance unreachable: ${(err as Error).message}`, instanceField);
     } finally {
-      bouton.disabled = false;
-      bouton.textContent = "Enregistrer et tester";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save and test";
     }
   })();
 });
 
-void afficherEtat();
+void renderStatus();

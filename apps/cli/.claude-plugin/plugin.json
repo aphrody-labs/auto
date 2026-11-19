@@ -1,0 +1,7 @@
+{
+  "name": "auto",
+  "version": "2026.11.5",
+  "description": "Auto CLI and MCP tools for Factur-X invoicing, accounting FEC, HR, automations, and workspace search.",
+  "author": { "name": "Aphrody", "url": "https://aphrody.com" },
+  "license": "Apache-2.0"
+}

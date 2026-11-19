@@ -1,20 +1,24 @@
 [package]
 name = "auto-ffi"
-version = "0.0.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Bibliothèque C ABI pour bun:ffi : rendu PDF, Factur-X, XML CII, extraction, contrôle PDF/A, tableurs, PDF et Word, base de connaissances"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+auto-auth = { path = "../auto-auth", default-features = false }
 auto-docs = { path = "../auto-docs" }
-auto-connaissance = { path = "../auto-connaissance" }
 auto-facturx = { path = "../auto-facturx" }
-auto-fichiers = { path = "../auto-fichiers" }
-auto-modele = { path = "../auto-modele" }
+auto-files = { path = "../auto-files" }
+auto-knowledge = { path = "../auto-knowledge" }
+auto-model = { path = "../auto-model" }
 auto-sheets = { path = "../auto-sheets" }
+base64.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true

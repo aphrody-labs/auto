@@ -1,100 +1,109 @@
 import { expect, test } from "bun:test";
 import {
-  avecMentionsParDefaut,
-  avoirPartiel,
-  avoirTotal,
-  htLigne,
-  devisVersFacture,
-  numero,
-  sirenValide,
-  siretValide,
-  totaux,
-  tvaIntracomFr,
-  verifier,
+  computeTotals,
+  formatDocumentNumber,
+  frVatNumber,
+  fullCreditNote,
+  lineNetExclVat,
+  partialCreditNote,
+  quoteToInvoice,
+  validSiren,
+  validSiret,
+  validVatRate,
+  verifyCustomer,
+  verifyDocument,
+  verifyProduct,
+  withDefaultLegalTerms,
   type Document,
 } from "./index";
 
-const emetteur = { nom: "ACME", siret: "73282932000074", adresse: "1 rue A, Paris", tvaIntracom: "FR44732829320" };
-const client = { nom: "Client", siret: "73282932000074", adresse: "2 rue B, Lyon" };
-const devis: Document = {
-  type: "devis",
+const issuer = {
+  name: "ACME SAS",
+  taxId: "73282932000074",
+  address: "1 Rue A, Paris",
+  vatNumber: "FR44732829320",
+};
+const customer = { name: "Client Co", taxId: "73282932000074", address: "2 Rue B, Lyon" };
+const quote: Document = {
+  type: "quote",
   date: "2026-10-01",
-  emetteur,
-  client,
-  lignes: [{ designation: "Audit", quantite: 2, prixUnitaireHtCents: 50000, tva: 200 }],
-  validiteJours: 30,
+  issuer,
+  customer,
+  lines: [{ description: "Audit", quantity: 2, unitPriceExclVatCents: 50000, vat: 200 }],
+  validityDays: 30,
 };
 
-test("totaux par taux", () => {
-  const t = totaux([
-    { designation: "a", quantite: 2, prixUnitaireHtCents: 5000, tva: 200 },
-    { designation: "b", quantite: 1, prixUnitaireHtCents: 1000, tva: 55 },
+test("computes totals grouped by VAT rate", () => {
+  const totals = computeTotals([
+    { description: "a", quantity: 2, unitPriceExclVatCents: 5000, vat: 200 },
+    { description: "b", quantity: 1, unitPriceExclVatCents: 1000, vat: 55 },
   ]);
-  expect(t.htCents).toBe(11000);
-  expect(t.tvaCents).toBe(2000 + 55);
-  expect(t.ttcCents).toBe(13055);
+  expect(totals.totalExclVatCents).toBe(11000);
+  expect(totals.totalVatCents).toBe(2055);
+  expect(totals.totalInclVatCents).toBe(13055);
+  expect(totals.byRate).toEqual([
+    { rate: 55, baseExclVatCents: 1000, vatCents: 55 },
+    { rate: 200, baseExclVatCents: 10000, vatCents: 2000 },
+  ]);
 });
 
-test("siret, siren, tva intracom", () => {
-  expect(siretValide("73282932000074")).toBe(true);
-  expect(siretValide("73282932000075")).toBe(false);
-  expect(sirenValide("732829320")).toBe(true);
-  expect(sirenValide("732829321")).toBe(false);
-  expect(tvaIntracomFr("732829320")).toBe("FR44732829320");
+test("validates SIRET, SIREN, VAT key, and VAT rates", () => {
+  expect(validSiret("73282932000074")).toBe(true);
+  expect(validSiret("73282932000075")).toBe(false);
+  expect(validSiren("732829320")).toBe(true);
+  expect(validSiren("732829321")).toBe(false);
+  expect(frVatNumber("732829320")).toBe("FR44732829320");
+  expect(validVatRate(200)).toBe(true);
+  expect(validVatRate(190)).toBe(false);
 });
 
-test("numérotation par série", () => {
-  expect(numero("facture", 2026, 1)).toBe("F-2026-0001");
-  expect(numero("acompte", 2026, 2)).toBe("F-2026-0002");
-  expect(numero("avoir", 2026, 1)).toBe("A-2026-0001");
-  expect(numero("devis", 2026, 12)).toBe("D-2026-0012");
+test("formats site-scoped and cloud document numbers", () => {
+  expect(formatDocumentNumber("invoice", 2026, 1)).toBe("INV-2026-0001");
+  expect(formatDocumentNumber("deposit", 2026, 2)).toBe("INV-2026-0002");
+  expect(formatDocumentNumber("invoice", 2026, 7, "laptop-1")).toBe("INV-laptop-1-2026-0007");
+  expect(formatDocumentNumber("credit_note", 2026, 1)).toBe("CN-2026-0001");
+  expect(formatDocumentNumber("quote", 2026, 12)).toBe("QUO-2026-0012");
 });
 
-test("devis valide, facture issue du devis valide", () => {
-  expect(verifier(devis)).toEqual([]);
-  const f = devisVersFacture(devis, "D-2026-0001", "2026-10-10", "2026-11-09");
-  expect(verifier(f)).toEqual(["date de livraison ou de prestation manquante"]);
-  expect(verifier({ ...f, datePrestation: "2026-10-05" })).toEqual([]);
-  expect(f.origine).toBe("D-2026-0001");
+test("validates quote, invoice conversion, VAT exemption, and credit notes", () => {
+  expect(verifyDocument(quote)).toEqual([]);
+  const inv = quoteToInvoice(quote, "QUO-2026-0001", "2026-10-10", "2026-11-09");
+  expect(verifyDocument(inv)).toEqual(["Missing supply or service date"]);
+  expect(verifyDocument({ ...inv, serviceDate: "2026-10-05" })).toEqual([]);
+  expect(inv.origin).toBe("QUO-2026-0001");
+
+  const bareInvoice: Document = { ...quote, type: "invoice" };
+  const errs = verifyDocument(bareInvoice);
+  expect(errs).toContain("Missing due date");
+  expect(errs).toContain("Missing late payment penalty terms");
+  expect(
+    verifyDocument(withDefaultLegalTerms({ ...bareInvoice, dueDate: "2026-11-01", serviceDate: "2026-10-01" })),
+  ).toEqual([]);
+
+  const exempt: Document = { ...quote, issuer: { ...issuer, vatNumber: undefined }, vatExempt: true };
+  expect(verifyDocument(exempt)).toContain("VAT exemption requires 0% VAT on all lines");
+  expect(verifyDocument({ ...exempt, lines: [{ ...quote.lines[0]!, vat: 0 }] })).toEqual([]);
+
+  const fullCn = fullCreditNote(inv, "INV-2026-0001", "2026-10-20");
+  expect(fullCn.type).toBe("credit_note");
+  expect(fullCn.origin).toBe("INV-2026-0001");
+  expect(() => fullCreditNote(quote, "QUO-1", "2026-10-20")).toThrow();
+
+  const partialCn = partialCreditNote(inv, "INV-2026-0001", "2026-10-20", [{ ...inv.lines[0]!, quantity: 1 }]);
+  expect(computeTotals(partialCn.lines).totalInclVatCents).toBe(60000);
+  expect(() => partialCreditNote(inv, "INV-2026-0001", "2026-10-20", [])).toThrow();
 });
 
-test("mentions obligatoires de facture", () => {
-  const f: Document = { ...devis, type: "facture" };
-  const e = verifier(f);
-  expect(e).toContain("date d'échéance manquante");
-  expect(e).toContain("taux des pénalités de retard manquant");
-  expect(verifier(avecMentionsParDefaut({ ...f, echeance: "2026-11-01", datePrestation: "2026-10-01" }))).toEqual([]);
-});
-
-test("franchise en base", () => {
-  const f: Document = { ...devis, emetteur: { ...emetteur, tvaIntracom: undefined }, franchiseTva: true };
-  expect(verifier(f)).toContain("franchise en base : toutes les lignes doivent être à 0 % de TVA");
-  expect(verifier({ ...f, lignes: [{ ...devis.lignes[0]!, tva: 0 }] })).toEqual([]);
-});
-
-test("avoir", () => {
-  const f = devisVersFacture(devis, "D-2026-0001", "2026-10-10", "2026-11-09");
-  const a = avoirTotal(f, "F-2026-0001", "2026-10-20");
-  expect(a.type).toBe("avoir");
-  expect(a.origine).toBe("F-2026-0001");
-  expect(() => avoirTotal(devis, "D-1", "2026-10-20")).toThrow();
-});
-
-test("remises identiques à auto-modele", () => {
-  const l = (quantite: number, prixUnitaireHtCents: number, remiseBp: number) =>
-    htLigne({ designation: "x", quantite, prixUnitaireHtCents, tva: 200, remiseBp });
-  expect(l(3, 33333, 1250)).toBe(87499);
-  expect(l(1.5, 19999, 1000)).toBe(26999);
-  expect(l(7, 1999, 333)).toBe(13527);
-  expect(verifier({ ...devis, lignes: [{ ...devis.lignes[0]!, remiseBp: 12000 }] })).toContain(
-    "ligne 1 : remise invalide",
+test("matches auto-model line discount rounding and verifies customers/products", () => {
+  const discounted = (quantity: number, unitPriceExclVatCents: number, discountBp: number) =>
+    lineNetExclVat({ description: "x", quantity, unitPriceExclVatCents, vat: 200, discountBp });
+  expect(discounted(3, 33333, 1250)).toBe(87499);
+  expect(discounted(1.5, 19999, 1000)).toBe(26999);
+  expect(discounted(7, 1999, 333)).toBe(13527);
+  expect(verifyDocument({ ...quote, lines: [{ ...quote.lines[0]!, discountBp: 12000 }] })).toContain(
+    "Line 1: invalid discount",
   );
-});
-
-test("avoir partiel", () => {
-  const f = devisVersFacture(devis, "D-2026-0001", "2026-10-10", "2026-11-09");
-  const a = avoirPartiel(f, "F-2026-0001", "2026-10-20", [{ ...f.lignes[0]!, quantite: 1 }]);
-  expect(a.type).toBe("avoir");
-  expect(totaux(a.lignes).ttcCents).toBe(60000);
-  expect(() => avoirPartiel(f, "F-2026-0001", "2026-10-20", [])).toThrow();
+  expect(verifyCustomer(customer)).toEqual([]);
+  expect(verifyCustomer({ name: "" })).toContain("Customer name is required");
+  expect(verifyProduct({ description: "Consulting", unitPriceExclVatCents: 10000, vat: 200 })).toEqual([]);
 });

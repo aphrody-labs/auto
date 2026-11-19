@@ -1,24 +1,59 @@
-// Compile auto-ffi en conteneur et copie les bibliothèques dans dist/native/<plateforme>/ :
-// Linux (production) et Windows x64 par compilation croisée MinGW (poste de dev sans MSVC).
-import { $ } from "bun";
-import { racineDocker } from "./docker-racine";
+import { join } from "node:path";
 
-const root = Bun.fileURLToPath(new URL("..", import.meta.url));
-const cibles = [
-  { triple: "x86_64-unknown-linux-gnu", fichier: "libauto_ffi.so", dossier: "linux-x64" },
-  { triple: "x86_64-pc-windows-gnu", fichier: "auto_ffi.dll", dossier: "windows-x64" },
-];
-const voulues = Bun.argv.slice(2);
+const root = Bun.fileURLToPath(new URL("../", import.meta.url));
+const outDir = join(root, "packages", "native", "wasm");
 
-for (const c of cibles.filter((c) => !voulues.length || voulues.includes(c.dossier))) {
-  await $`${process.execPath} ${`${root}scripts/cargo.ts`} build -q --release --locked -p auto-ffi --target ${c.triple}`;
-  const dest = `/w/dist/native/${c.dossier}`;
-  // Le répertoire cible est un volume du conteneur : copie par un conteneur jetable.
-  await $`docker run --rm -e MSYS_NO_PATHCONV=1 -v auto-cargo-target:/target -v ${`${await racineDocker(root)}`}:/w alpine sh -c ${`mkdir -p ${dest} && cp /target/${c.triple}/release/${c.fichier} ${dest}/`}`.env(
-    {
-      ...Bun.env,
-      MSYS_NO_PATHCONV: "1",
-    },
-  );
-  console.log(`dist/native/${c.dossier}/${c.fichier}`);
+const env = {
+  ...Bun.env,
+  RUSTC_WRAPPER: "",
+  RUSTUP_TOOLCHAIN: "nightly",
+  CARGO_TERM_COLOR: "never",
+  ...(process.platform === "win32"
+    ? { CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: "-C target-cpu=native -Zthreads=8 -Zshare-generics=off" }
+    : {}),
+};
+
+function runOrExit(cmd: string[], cwd = root): void {
+  const res = Bun.spawnSync(cmd, { cwd, env, stdout: "inherit", stderr: "inherit" });
+  if (res.exitCode !== 0) process.exit(res.exitCode ?? 1);
 }
+
+function cargoTargetDir(): string {
+  const meta = Bun.spawnSync(["cargo", "metadata", "--no-deps", "--format-version", "1"], {
+    cwd: root,
+    env,
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  if (meta.exitCode !== 0) process.exit(meta.exitCode ?? 1);
+  const parsed = JSON.parse(meta.stdout.toString()) as { target_directory: string };
+  return parsed.target_directory;
+}
+
+runOrExit(["cargo", "build", "-p", "auto-ffi", "--target", "wasm32-unknown-unknown", "--profile", "wasm-lto"]);
+
+const rawWasm = join(cargoTargetDir(), "wasm32-unknown-unknown", "wasm-lto", "auto_ffi.wasm");
+
+runOrExit(["wasm-bindgen", "--target", "web", "--out-dir", outDir, rawWasm]);
+runOrExit(["bun", "fmt", outDir]);
+
+const bgWasm = join(outDir, "auto_ffi_bg.wasm");
+if (Bun.which("wasm-opt")) {
+  runOrExit([
+    "wasm-opt",
+    "-Oz",
+    "--enable-bulk-memory-opt",
+    "--enable-nontrapping-float-to-int",
+    "--enable-sign-ext",
+    "--enable-mutable-globals",
+    bgWasm,
+    "-o",
+    bgWasm,
+  ]);
+}
+
+const rawBytes = await Bun.file(bgWasm).bytes();
+const gzBytes = Bun.gzipSync(rawBytes);
+console.log(
+  `auto_ffi_bg.wasm: ${(rawBytes.length / 1024 / 1024).toFixed(2)} MiB raw, ${(gzBytes.length / 1024 / 1024).toFixed(2)} MiB gzip`,
+);

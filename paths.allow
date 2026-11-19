@@ -1,10 +1,2 @@
-# Absolute-path literals kept on purpose (format: tools/paths.ts of the ay workspace). Everything else derives its paths.
-# Paths inside container images and compose files (image filesystem, HOME of uid 10001, mount points), not host paths.
-docker/*.Dockerfile
-box/**
-compose.yaml
-compose.production.yaml
-# systemd requires an absolute ExecStart; the unit documents the install location on the usa host.
-infra/usa/*.service
-# Dated record of the 2026-11-12 move to usa: names the directories as they were on the hosts.
-MIGRATION.md
+# Paths intentionally anchored to container/deploy mount layouts (never host-specific paths or secrets).
+apps/server/deploy/compose.self-hosted.yaml

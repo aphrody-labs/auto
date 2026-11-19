@@ -1,0 +1,31 @@
+{
+  "name": "@aphrody/auto-server",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "bin": {
+    "auto-server": "src/bin.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./router": "./src/router.ts",
+    "./worker": "./src/worker.ts",
+    "./self-hosted": "./src/self-hosted.ts"
+  },
+  "dependencies": {
+    "@aphrody/auto-client": "workspace:*",
+    "@aphrody/auto-domain": "workspace:*",
+    "@aphrody/auto-i18n": "workspace:*",
+    "@aphrody/auto-native": "workspace:*",
+    "@aphrody/auto-platform": "workspace:*",
+    "@aphrody/auto-services": "workspace:*",
+    "@aphrody/auto-store": "workspace:*",
+    "@orpc/openapi": "^1.16.2",
+    "@orpc/server": "^1.16.2",
+    "@orpc/zod": "^1.16.2",
+    "h3": "^2.0.8",
+    "srvx": "^1.0.8",
+    "zod": "^4"
+  }
+}

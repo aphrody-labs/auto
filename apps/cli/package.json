@@ -1,21 +1,23 @@
 {
-  "name": "@auto/cli",
+  "name": "@aphrody/auto-cli",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
   "bin": {
-    "auto": "src/cli.ts"
+    "auto-cli": "src/cli.ts"
   },
   "type": "module",
-  "scripts": {
-    "build": "bun build --compile src/cli.ts --outfile ../../dist/auto"
+  "exports": {
+    ".": "./src/cli.ts"
   },
   "dependencies": {
-    "@auto/agent": "workspace:*",
-    "@auto/ingest": "workspace:*"
+    "@aphrody/auto-client": "workspace:*",
+    "@aphrody/auto-i18n": "workspace:*",
+    "@aphrody/auto-native": "workspace:*",
+    "@aphrody/auto-platform": "workspace:*",
+    "@aphrody/auto-services": "workspace:*"
   },
   "devDependencies": {
-    "@auto/api": "workspace:*",
-    "@auto/store": "workspace:*"
+    "@aphrody/auto-server": "workspace:*"
   }
 }

@@ -1,7 +1,7 @@
-# Names of this repository. The scheme it is checked against: https://github.com/aphrody-labs/.github/blob/main/naming/NAMING.md
 id = "auto"
 kind = "app"
 org = "aphrody-labs"
 
-# Nothing of this repository is published to a registry: every package is private or publish = false, and Rust/WASM
-# suite crates come from published crates.io, GitHub (storytold/*), or Cloudflare R2 releases. No legacy names to keep.
+[names]
+npm_scope = "@aphrody"
+crate_prefix = "auto-"

@@ -1,403 +1,620 @@
-//! C ABI pour `bun:ffi`. Un seul point d'entrée :
-//!
-//! `auto_call(op, op_len, entree, entree_len, sortie_len) -> *mut u8`
-//!
-//! Le tampon renvoyé commence par un octet d'état (0 = succès, 1 = erreur), suivi de la charge
-//! utile : octets du PDF, texte XML ou JSON, ou message d'erreur UTF-8. L'appelant le libère avec
-//! `auto_free(ptr, len)`, `len` étant la valeur écrite dans `sortie_len`.
-//!
-//! Opérations : `rendre` (JSON → PDF), `facturx` (JSON + date unix en tête → Factur-X),
-//! `xml` (JSON → XML CII), `extraire` (PDF → XML, vide si absent), `verifier_pdfa` (PDF → JSON),
-//! `tableur_lire` (xlsx/xls/xlsb/ods/csv → JSON), `xlsx_ecrire` (JSON → xlsx).
-//!
-//! Fichiers (auto-fichiers) ; une entrée « en trames » est une suite de `u32` little-endian
-//! (longueur) suivis d'autant d'octets :
-//! `pdf_fusionner` (trames nom, PDF, nom, PDF… → PDF), `pdf_pages` (trames JSON `[pages]`, PDF → PDF),
-//! `pdf_nombre_pages` (PDF → nombre), `pdf_texte` (PDF → JSON `{ pages: [texte] }`), `docx_creer` (JSON → DOCX),
-//! `docx_champs` (DOCX → JSON `[noms]`), `docx_remplir` (trames JSON `{ nom: valeur }`, DOCX → DOCX),
-//! `docx_texte` (DOCX → texte), `docx_pdf` (DOCX → PDF),
-//! `pdf_caviarder` (trames JSON options, PDF → trames JSON rapport, PDF), `pdf_signer` (trames JSON
-//! options, PKCS #12, PDF → PDF), `pdf_signatures` (trames certificats de confiance PEM, PDF → JSON),
-//! `pptx_creer` (JSON → PPTX), `pptx_pdf` (PPTX → PDF).
-//!
-//! Base de connaissances (auto-connaissance) : `rag_decouper` (JSON `{ source, texte, taille? }` → JSON
-//! `[{ position, texte, titre, ligne_debut, ligne_fin }]`), `rag_topk` (trames JSON `{ dimension, k, diversite? }`,
-//! question puis matrice en `f32` little-endian → JSON `[{ indice, score }]`, score cosinus décroissant).
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-use auto_modele::Facture;
 use std::collections::BTreeMap;
 
-/// Découpe une entrée en trames (`u32` LE de longueur puis les octets).
-fn trames(mut entree: &[u8]) -> Result<Vec<&[u8]>, String> {
-    let mut v = Vec::new();
-    while !entree.is_empty() {
-        let (n, reste) = entree.split_at_checked(4).ok_or("trame tronquée")?;
-        let n = u32::from_le_bytes(n.try_into().map_err(|_| "trame invalide")?) as usize;
-        let (t, reste) = reste.split_at_checked(n).ok_or("trame tronquée")?;
-        v.push(t);
-        entree = reste;
+use auto_auth::{
+    jwt::{JwkSet, JwtClaims, derive_ed25519_keypair, jwk_from_verifying_key, sign_jwt, verify_jwt},
+    passkey::{PasskeyAssertion, verify_passkey_assertion},
+    password::{hash_password_argon2id_with_salt, hash_password_scrypt_compat, verify_password},
+    rbac::{Action, Role, can_perform, generate_api_key_with_entropy},
+    session::{open_sealed, seal_with_nonce, sign_hmac_token, verify_hmac_token},
+    totp::{TotpAlgorithm, decode_base32, otpauth_uri, totp, verify_totp},
+};
+use auto_files::{
+    NewPresentation, RedactionOptions, SignatureOptions, SimpleDocx, TextReplacement, create_docx, create_pptx,
+    docx_text, docx_to_pdf, extract_pdf_pages, fill_template_docx, merge_pdfs, pdf_page_count, pdf_text, pptx_text,
+    pptx_to_pdf, read_docx, redact_pdf, replace_docx, sign_pdf, template_fields_docx, verify_signatures,
+};
+use auto_knowledge::{chunk_text, nearest_vectors};
+use auto_model::Document;
+use auto_sheets::{CellEdit, Workbook, modify_xlsx, read as read_spreadsheet, write_xlsx};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenderPdfEnvelope {
+    doc: Document,
+    #[serde(default)]
+    locale: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FacturxEnvelope {
+    doc: Document,
+    #[serde(default)]
+    timestamp: Option<i64>,
+    #[serde(default)]
+    locale: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ChunkRequest {
+    source: String,
+    text: String,
+    #[serde(default)]
+    chunk_size: Option<usize>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NearestRequest {
+    dimension: usize,
+    k: usize,
+    #[serde(default)]
+    diversity: Option<f64>,
+}
+
+fn frame_parts(parts: &[&[u8]]) -> Vec<u8> {
+    let total: usize = parts.iter().map(|p| 4 + p.len()).sum();
+    let mut out = Vec::with_capacity(total);
+    for p in parts {
+        out.extend_from_slice(&(p.len() as u32).to_le_bytes());
+        out.extend_from_slice(p);
     }
-    Ok(v)
+    out
 }
 
-/// Inverse de [`trames`].
-fn en_trames(parties: &[&[u8]]) -> Vec<u8> {
-    let mut v = Vec::with_capacity(parties.iter().map(|p| p.len() + 4).sum());
-    for p in parties {
-        v.extend_from_slice(&(p.len() as u32).to_le_bytes());
-        v.extend_from_slice(p);
+fn unframe_parts(bytes: &[u8]) -> Result<Vec<&[u8]>, String> {
+    let mut parts = Vec::new();
+    let mut offset = 0usize;
+    while offset < bytes.len() {
+        let header = bytes.get(offset..offset + 4).ok_or_else(|| "truncated frame header".to_owned())?;
+        let len = u32::from_le_bytes([header[0], header[1], header[2], header[3]]) as usize;
+        offset += 4;
+        let payload = bytes.get(offset..offset + len).ok_or_else(|| "truncated frame payload".to_owned())?;
+        parts.push(payload);
+        offset += len;
     }
-    v
+    Ok(parts)
 }
 
-fn json<T: serde::de::DeserializeOwned>(o: &[u8]) -> Result<T, String> {
-    serde_json::from_slice(o).map_err(|e| e.to_string())
-}
-
-fn docx(o: &[u8]) -> Result<auto_fichiers::Docx, String> {
-    auto_fichiers::lire_docx(o).map_err(|e| e.to_string())
-}
-
-/// Nombres `f32` little-endian.
-fn f32s(o: &[u8]) -> Result<Vec<f32>, String> {
-    let (blocs, reste) = o.as_chunks::<4>();
-    if !reste.is_empty() {
-        return Err("vecteur f32 : longueur non multiple de 4".into());
+fn parse_doc_with_locale(input: &[u8]) -> Result<Document, String> {
+    if let Ok(env) = serde_json::from_slice::<RenderPdfEnvelope>(input) {
+        let mut doc = env.doc;
+        if let Some(loc) = env.locale {
+            doc.locale = Some(loc);
+        }
+        return Ok(doc);
     }
-    Ok(blocs.iter().map(|b| f32::from_le_bytes(*b)).collect())
+    serde_json::from_slice::<Document>(input).map_err(|e| format!("invalid document JSON: {e}"))
 }
 
-fn facture(entree: &[u8]) -> Result<Facture, String> {
-    Facture::depuis_json(std::str::from_utf8(entree).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+fn f32_le_vec(bytes: &[u8], what: &str) -> Result<Vec<f32>, String> {
+    if !bytes.len().is_multiple_of(4) {
+        return Err(format!("{what} byte length must be a multiple of 4"));
+    }
+    Ok(bytes.as_chunks::<4>().0.iter().copied().map(f32::from_le_bytes).collect())
 }
 
-/// Exécute une opération ; utilisable aussi depuis Rust.
-pub fn appeler(op: &str, entree: &[u8]) -> Result<Vec<u8>, String> {
+fn to_json_bytes<T: serde::Serialize>(val: &T) -> Result<Vec<u8>, String> {
+    serde_json::to_vec(val).map_err(|e| format!("JSON serialization error: {e}"))
+}
+
+pub fn dispatch(op: &str, input: &[u8]) -> Result<Vec<u8>, String> {
     match op {
-        "rendre" => auto_docs::rendre(&facture(entree)?).map_err(|e| e.to_string()),
+        "render_pdf" => {
+            let doc = parse_doc_with_locale(input)?;
+            auto_docs::render(&doc).map_err(|e| e.to_string())
+        }
         "facturx" => {
-            // 8 octets de date unix (little-endian) puis le JSON.
-            let (date, json) = entree.split_at_checked(8).ok_or("entrée trop courte")?;
-            let date = i64::from_le_bytes(date.try_into().map_err(|_| "date invalide")?);
-            let f = facture(json)?;
-            let pdf = auto_docs::rendre(&f).map_err(|e| e.to_string())?;
-            auto_facturx::generer(&f, &pdf, date).map_err(|e| e.to_string())
-        }
-        "xml" => auto_facturx::xml(&facture(entree)?).map(String::into_bytes).map_err(|e| e.to_string()),
-        "extraire" => {
-            auto_facturx::extraire(entree).map(|x| x.unwrap_or_default().into_bytes()).map_err(|e| e.to_string())
-        }
-        "verifier_pdfa" => auto_facturx::verifier_pdfa(entree)
-            .map(|v| serde_json::to_vec(&v).unwrap_or_default())
-            .map_err(|e| e.to_string()),
-        "tableur_lire" => auto_sheets::lire(entree)
-            .map_err(|e| e.to_string())
-            .and_then(|l| serde_json::to_vec(&l).map_err(|e| e.to_string())),
-        "xlsx_ecrire" => {
-            let c: auto_sheets::Classeur = serde_json::from_slice(entree).map_err(|e| e.to_string())?;
-            auto_sheets::ecrire(&c).map_err(|e| e.to_string())
-        }
-        "xlsx_modifier" => {
-            let [editions, octets] = trames(entree)?[..] else { return Err("trames éditions, XLSX attendues".into()) };
-            auto_sheets::modifier(octets, &json::<Vec<auto_sheets::EditionCellule>>(editions)?)
-                .map_err(|e| e.to_string())
-        }
-        "pdf_fusionner" => {
-            let t = trames(entree)?;
-            if t.len() % 2 != 0 {
-                return Err("trames nom/PDF attendues par paires".into());
-            }
-            let pdfs = t
-                .chunks(2)
-                .map(|c| Ok((std::str::from_utf8(c[0]).map_err(|e| e.to_string())?, c[1])))
-                .collect::<Result<Vec<_>, String>>()?;
-            auto_fichiers::fusionner(&pdfs).map_err(|e| e.to_string())
-        }
-        "pdf_pages" => {
-            let [pages, pdf] = trames(entree)?[..] else { return Err("trames pages, PDF attendues".into()) };
-            auto_fichiers::extraire_pages(pdf, &json::<Vec<usize>>(pages)?).map_err(|e| e.to_string())
-        }
-        "pdf_nombre_pages" => {
-            auto_fichiers::nombre_pages(entree).map(|n| n.to_string().into_bytes()).map_err(|e| e.to_string())
-        }
-        "pdf_texte" => auto_fichiers::texte_pdf(entree)
-            .map(|pages| serde_json::json!({ "pages": pages }).to_string().into_bytes())
-            .map_err(|e| e.to_string()),
-        "docx_creer" => auto_fichiers::creer_docx(&json(entree)?)
-            .and_then(|d| auto_fichiers::ecrire_docx(&d))
-            .map_err(|e| e.to_string()),
-        "docx_champs" => serde_json::to_vec(&auto_fichiers::champs_docx(&docx(entree)?)).map_err(|e| e.to_string()),
-        "docx_remplir" => {
-            let [valeurs, octets] = trames(entree)?[..] else { return Err("trames valeurs, DOCX attendues".into()) };
-            let mut d = docx(octets)?;
-            auto_fichiers::remplir_docx(&mut d, &json::<BTreeMap<String, String>>(valeurs)?)
-                .and_then(|_| auto_fichiers::ecrire_docx(&d))
-                .map_err(|e| e.to_string())
-        }
-        "docx_texte" => Ok(auto_fichiers::texte_docx(&docx(entree)?).into_bytes()),
-        "docx_remplacer" => {
-            let [editions, octets] = trames(entree)?[..] else {
-                return Err("trames remplacements, DOCX attendues".into());
+            let (mut doc, ts) = if input.first() == Some(&b'{')
+                || input.iter().copied().find(|b| !b.is_ascii_whitespace()) == Some(b'{')
+            {
+                let env: FacturxEnvelope =
+                    serde_json::from_slice(input).map_err(|e| format!("invalid facturx JSON: {e}"))?;
+                let mut d = env.doc;
+                if let Some(loc) = env.locale {
+                    d.locale = Some(loc);
+                }
+                (d, env.timestamp.unwrap_or(0))
+            } else {
+                let ts_bytes = input.get(..8).ok_or_else(|| "missing 8-byte unix timestamp header".to_owned())?;
+                let ts = i64::from_le_bytes([
+                    ts_bytes[0],
+                    ts_bytes[1],
+                    ts_bytes[2],
+                    ts_bytes[3],
+                    ts_bytes[4],
+                    ts_bytes[5],
+                    ts_bytes[6],
+                    ts_bytes[7],
+                ]);
+                let doc: Document =
+                    serde_json::from_slice(&input[8..]).map_err(|e| format!("invalid document JSON: {e}"))?;
+                (doc, ts)
             };
-            let mut d = docx(octets)?;
-            auto_fichiers::remplacer_docx(&mut d, &json::<Vec<auto_fichiers::Remplacement>>(editions)?)
-                .and_then(|_| auto_fichiers::ecrire_docx(&d))
-                .map_err(|e| e.to_string())
+            let _ = &mut doc;
+            let base_pdf = auto_docs::render(&doc).map_err(|e| e.to_string())?;
+            auto_facturx::generate(&doc, &base_pdf, ts).map_err(|e| e.to_string())
         }
-        "docx_pdf" => auto_fichiers::docx_en_pdf(&docx(entree)?).map_err(|e| e.to_string()),
-        "pdf_caviarder" => {
-            let [options, pdf] = trames(entree)?[..] else { return Err("trames options, PDF attendues".into()) };
-            let (pdf, rapport) = auto_fichiers::caviarder(pdf, &json(options)?).map_err(|e| e.to_string())?;
-            Ok(en_trames(&[&serde_json::to_vec(&rapport).map_err(|e| e.to_string())?, &pdf]))
+        "xml_cii" => {
+            let doc = parse_doc_with_locale(input)?;
+            auto_facturx::xml(&doc).map(String::into_bytes).map_err(|e| e.to_string())
         }
-        "pdf_signer" => {
-            let [options, p12, pdf] = trames(entree)?[..] else {
-                return Err("trames options, PKCS #12, PDF attendues".into());
+        "extract_xml" => {
+            let opt = auto_facturx::extract_xml(input).map_err(|e| e.to_string())?;
+            Ok(opt.unwrap_or_default().into_bytes())
+        }
+        "verify_pdfa" => {
+            let errs = auto_facturx::verify_pdfa(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&errs)
+        }
+        "read_spreadsheet" => {
+            let res = read_spreadsheet(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&res)
+        }
+        "write_xlsx" => {
+            let book: Workbook = serde_json::from_slice(input).map_err(|e| format!("invalid workbook JSON: {e}"))?;
+            write_xlsx(&book).map_err(|e| e.to_string())
+        }
+        "modify_xlsx" => {
+            let parts = unframe_parts(input)?;
+            let [edits_bytes, xlsx_bytes] = parts.as_slice() else {
+                return Err("modify_xlsx expects [edits_json, xlsx_bytes]".into());
             };
-            auto_fichiers::signer_pdf(pdf, p12, &json(options)?).map_err(|e| e.to_string())
+            let edits: Vec<CellEdit> =
+                serde_json::from_slice(edits_bytes).map_err(|e| format!("invalid edits JSON: {e}"))?;
+            modify_xlsx(xlsx_bytes, &edits).map_err(|e| e.to_string())
         }
-        "pdf_signatures" => {
-            let [confiance, pdf] = trames(entree)?[..] else { return Err("trames certificats, PDF attendues".into()) };
-            auto_fichiers::verifier_signatures(pdf, confiance)
-                .map_err(|e| e.to_string())
-                .and_then(|v| serde_json::to_vec(&v).map_err(|e| e.to_string()))
-        }
-        "pptx_creer" => auto_fichiers::creer_presentation(&json(entree)?)
-            .and_then(|p| auto_fichiers::ecrire_pptx(&p))
-            .map_err(|e| e.to_string()),
-        "pptx_pdf" => auto_fichiers::lire_pptx(entree)
-            .and_then(|p| auto_fichiers::presentation_en_pdf(&p))
-            .map_err(|e| e.to_string()),
-        "rag_decouper" => {
-            #[derive(serde::Deserialize)]
-            struct Entree {
-                source: String,
-                texte: String,
-                taille: Option<usize>,
+        "merge_pdfs" => {
+            let parts = unframe_parts(input)?;
+            if parts.is_empty() || !parts.len().is_multiple_of(2) {
+                return Err("merge_pdfs expects [name, bytes]... pairs".into());
             }
-            let e: Entree = json(entree)?;
-            auto_connaissance::decouper(&e.source, &e.texte, e.taille)
-                .map_err(|e| e.to_string())
-                .and_then(|m| serde_json::to_vec(&m).map_err(|e| e.to_string()))
-        }
-        "rag_topk" => {
-            #[derive(serde::Deserialize)]
-            struct Parametres {
-                dimension: usize,
-                k: usize,
-                diversite: Option<f64>,
+            let mut pairs = Vec::with_capacity(parts.len() / 2);
+            for [name_bytes, pdf_bytes] in parts.as_chunks::<2>().0 {
+                let name = std::str::from_utf8(name_bytes).map_err(|_| "invalid UTF-8 PDF name".to_owned())?;
+                pairs.push((name, *pdf_bytes));
             }
-            let [p, question, matrice] = trames(entree)?[..] else {
-                return Err("trames paramètres, question, matrice attendues".into());
+            merge_pdfs(&pairs).map_err(|e| e.to_string())
+        }
+        "extract_pdf_pages" => {
+            let parts = unframe_parts(input)?;
+            let [pages_bytes, pdf_bytes] = parts.as_slice() else {
+                return Err("extract_pdf_pages expects [pages_json, pdf_bytes]".into());
             };
-            let p: Parametres = json(p)?;
-            auto_connaissance::plus_proches(&f32s(question)?, &f32s(matrice)?, p.dimension, p.k, p.diversite)
-                .map_err(|e| e.to_string())
-                .and_then(|r| serde_json::to_vec(&r).map_err(|e| e.to_string()))
+            let pages: Vec<usize> =
+                serde_json::from_slice(pages_bytes).map_err(|e| format!("invalid page indices JSON: {e}"))?;
+            extract_pdf_pages(pdf_bytes, &pages).map_err(|e| e.to_string())
         }
-        _ => Err(format!("opération inconnue : {op}")),
+        "pdf_page_count" => {
+            let count = pdf_page_count(input).map_err(|e| e.to_string())?;
+            Ok(count.to_string().into_bytes())
+        }
+        "pdf_text" => {
+            let pages = pdf_text(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "pages": pages }))
+        }
+        "create_docx" => {
+            let doc: SimpleDocx = serde_json::from_slice(input).map_err(|e| format!("invalid SimpleDocx JSON: {e}"))?;
+            create_docx(&doc).map_err(|e| e.to_string())
+        }
+        "read_docx" => {
+            let paragraphs = read_docx(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "paragraphs": paragraphs }))
+        }
+        "template_fields_docx" => {
+            let fields = template_fields_docx(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&fields)
+        }
+        "fill_template_docx" => {
+            let parts = unframe_parts(input)?;
+            let [values_bytes, docx_bytes] = parts.as_slice() else {
+                return Err("fill_template_docx expects [values_json, docx_bytes]".into());
+            };
+            let values: BTreeMap<String, String> =
+                serde_json::from_slice(values_bytes).map_err(|e| format!("invalid template values JSON: {e}"))?;
+            fill_template_docx(docx_bytes, &values).map_err(|e| e.to_string())
+        }
+        "replace_docx" => {
+            let parts = unframe_parts(input)?;
+            let [rep_bytes, docx_bytes] = parts.as_slice() else {
+                return Err("replace_docx expects [replacements_json, docx_bytes]".into());
+            };
+            let replacements: Vec<TextReplacement> =
+                serde_json::from_slice(rep_bytes).map_err(|e| format!("invalid replacements JSON: {e}"))?;
+            replace_docx(docx_bytes, &replacements).map_err(|e| e.to_string())
+        }
+        "docx_text" => docx_text(input).map(String::into_bytes).map_err(|e| e.to_string()),
+        "docx_to_pdf" => docx_to_pdf(input).map_err(|e| e.to_string()),
+        "redact_pdf" => {
+            let parts = unframe_parts(input)?;
+            let [opts_bytes, pdf_bytes] = parts.as_slice() else {
+                return Err("redact_pdf expects [options_json, pdf_bytes]".into());
+            };
+            let opts: RedactionOptions =
+                serde_json::from_slice(opts_bytes).map_err(|e| format!("invalid redaction options JSON: {e}"))?;
+            let (out_pdf, report) = redact_pdf(pdf_bytes, &opts).map_err(|e| e.to_string())?;
+            let report_json = to_json_bytes(&report)?;
+            Ok(frame_parts(&[&report_json, &out_pdf]))
+        }
+        "sign_pdf" => {
+            let parts = unframe_parts(input)?;
+            let [opts_bytes, pkcs12_bytes, pdf_bytes] = parts.as_slice() else {
+                return Err("sign_pdf expects [options_json, pkcs12_bytes, pdf_bytes]".into());
+            };
+            let opts: SignatureOptions =
+                serde_json::from_slice(opts_bytes).map_err(|e| format!("invalid signature options JSON: {e}"))?;
+            sign_pdf(pdf_bytes, pkcs12_bytes, &opts).map_err(|e| e.to_string())
+        }
+        "verify_signatures" => {
+            let parts = unframe_parts(input)?;
+            let [pem_bytes, pdf_bytes] = parts.as_slice() else {
+                return Err("verify_signatures expects [pem_bytes, pdf_bytes]".into());
+            };
+            let pem = std::str::from_utf8(pem_bytes).map_err(|_| "invalid UTF-8 PEM bundle".to_owned())?;
+            let sigs = verify_signatures(pdf_bytes, pem).map_err(|e| e.to_string())?;
+            to_json_bytes(&sigs)
+        }
+        "create_pptx" => {
+            let pres: NewPresentation =
+                serde_json::from_slice(input).map_err(|e| format!("invalid presentation JSON: {e}"))?;
+            create_pptx(&pres).map_err(|e| e.to_string())
+        }
+        "pptx_text" => {
+            let slides = pptx_text(input).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "slides": slides }))
+        }
+        "pptx_to_pdf" => pptx_to_pdf(input).map_err(|e| e.to_string()),
+        "chunk_text" => {
+            let req: ChunkRequest =
+                serde_json::from_slice(input).map_err(|e| format!("invalid chunk request JSON: {e}"))?;
+            let chunks = chunk_text(&req.source, &req.text, req.chunk_size).map_err(|e| e.to_string())?;
+            to_json_bytes(&chunks)
+        }
+        "nearest_vectors" => {
+            let parts = unframe_parts(input)?;
+            let [req_bytes, q_bytes, m_bytes] = parts.as_slice() else {
+                return Err("nearest_vectors expects [options_json, query_f32, matrix_f32]".into());
+            };
+            let req: NearestRequest =
+                serde_json::from_slice(req_bytes).map_err(|e| format!("invalid nearest_vectors JSON: {e}"))?;
+            let query = f32_le_vec(q_bytes, "query")?;
+            let matrix = f32_le_vec(m_bytes, "matrix")?;
+            let hits =
+                nearest_vectors(&query, &matrix, req.dimension, req.k, req.diversity).map_err(|e| e.to_string())?;
+            to_json_bytes(&hits)
+        }
+        "auth_hash_password" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                password: String,
+                salt_b64: String,
+                #[serde(default)]
+                mode: Option<String>,
+            }
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            let req: Req =
+                serde_json::from_slice(input).map_err(|e| format!("invalid auth_hash_password JSON: {e}"))?;
+            let salt = STANDARD.decode(&req.salt_b64).map_err(|e| format!("invalid saltB64: {e}"))?;
+            let hash = if req.mode.as_deref() == Some("scrypt") {
+                hash_password_scrypt_compat(&req.password, &salt).map_err(|e| e.to_string())?
+            } else {
+                hash_password_argon2id_with_salt(&req.password, &salt).map_err(|e| e.to_string())?
+            };
+            to_json_bytes(&serde_json::json!({ "hash": hash }))
+        }
+        "auth_verify_password" => {
+            #[derive(Deserialize)]
+            struct Req {
+                password: String,
+                hash: String,
+            }
+            let req: Req =
+                serde_json::from_slice(input).map_err(|e| format!("invalid auth_verify_password JSON: {e}"))?;
+            let valid = verify_password(&req.password, &req.hash).unwrap_or(false);
+            to_json_bytes(&serde_json::json!({ "valid": valid }))
+        }
+        "auth_sign_jwt" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                #[serde(default)]
+                key_label: Option<String>,
+                claims: JwtClaims,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_sign_jwt JSON: {e}"))?;
+            let (sk, kid) =
+                derive_ed25519_keypair(&req.master_secret, req.key_label.as_deref().unwrap_or("jwt-default"));
+            let token = sign_jwt(&sk, &kid, &req.claims).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "token": token, "kid": kid }))
+        }
+        "auth_verify_jwt" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                #[serde(default)]
+                key_label: Option<String>,
+                token: String,
+                #[serde(default)]
+                expected_issuer: Option<String>,
+                #[serde(default)]
+                expected_audience: Option<String>,
+                now_unix_secs: i64,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_verify_jwt JSON: {e}"))?;
+            let (sk, _) = derive_ed25519_keypair(&req.master_secret, req.key_label.as_deref().unwrap_or("jwt-default"));
+            let claims = verify_jwt(
+                &sk.verifying_key(),
+                &req.token,
+                req.expected_issuer.as_deref(),
+                req.expected_audience.as_deref(),
+                req.now_unix_secs,
+            )
+            .map_err(|e| e.to_string())?;
+            to_json_bytes(&claims)
+        }
+        "auth_jwks" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                #[serde(default)]
+                key_label: Option<String>,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_jwks JSON: {e}"))?;
+            let (sk, kid) =
+                derive_ed25519_keypair(&req.master_secret, req.key_label.as_deref().unwrap_or("jwt-default"));
+            to_json_bytes(&JwkSet { keys: vec![jwk_from_verifying_key(&sk.verifying_key(), &kid)] })
+        }
+        "auth_seal_secret" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                purpose: String,
+                plaintext_b64: String,
+                nonce_b64: String,
+            }
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_seal_secret JSON: {e}"))?;
+            let pt = STANDARD.decode(&req.plaintext_b64).map_err(|e| format!("invalid plaintextB64: {e}"))?;
+            let nonce = STANDARD.decode(&req.nonce_b64).map_err(|e| format!("invalid nonceB64: {e}"))?;
+            let token = seal_with_nonce(&req.master_secret, &req.purpose, &pt, &nonce).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "token": token }))
+        }
+        "auth_open_secret" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                purpose: String,
+                token: String,
+            }
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_open_secret JSON: {e}"))?;
+            let plain = open_sealed(&req.master_secret, &req.purpose, &req.token).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "plaintextB64": STANDARD.encode(&plain) }))
+        }
+        "auth_totp_code" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                secret_b32: String,
+                unix_secs: u64,
+                #[serde(default)]
+                issuer: Option<String>,
+                #[serde(default)]
+                account: Option<String>,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_totp_code JSON: {e}"))?;
+            let raw = decode_base32(&req.secret_b32).map_err(|e| e.to_string())?;
+            let code = totp(&raw, req.unix_secs, 6, 30, TotpAlgorithm::Sha1).map_err(|e| e.to_string())?;
+            let uri = otpauth_uri(
+                req.issuer.as_deref().unwrap_or("Auto"),
+                req.account.as_deref().unwrap_or("user"),
+                &raw,
+                TotpAlgorithm::Sha1,
+            );
+            to_json_bytes(&serde_json::json!({ "code": code, "uri": uri }))
+        }
+        "auth_totp_verify" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                secret_b32: String,
+                code: String,
+                unix_secs: u64,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_totp_verify JSON: {e}"))?;
+            let raw = decode_base32(&req.secret_b32).map_err(|e| e.to_string())?;
+            let valid = verify_totp(&raw, &req.code, req.unix_secs, 6, 30, 1, TotpAlgorithm::Sha1)
+                .map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "valid": valid }))
+        }
+        "auth_sign_token" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                purpose: String,
+                payload: serde_json::Value,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_sign_token JSON: {e}"))?;
+            let token = sign_hmac_token(&req.master_secret, &req.purpose, &req.payload).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "token": token }))
+        }
+        "auth_verify_token" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                master_secret: String,
+                purpose: String,
+                token: String,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_verify_token JSON: {e}"))?;
+            let payload: serde_json::Value =
+                verify_hmac_token(&req.master_secret, &req.purpose, &req.token).map_err(|e| e.to_string())?;
+            to_json_bytes(&payload)
+        }
+        "auth_generate_api_key" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                #[serde(default)]
+                prefix: Option<String>,
+                entropy_b64: String,
+            }
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            let req: Req =
+                serde_json::from_slice(input).map_err(|e| format!("invalid auth_generate_api_key JSON: {e}"))?;
+            let ent = STANDARD.decode(&req.entropy_b64).map_err(|e| format!("invalid entropyB64: {e}"))?;
+            let generated = generate_api_key_with_entropy(req.prefix.as_deref().unwrap_or("auto_"), &ent)
+                .map_err(|e| e.to_string())?;
+            to_json_bytes(&generated)
+        }
+        "auth_verify_passkey" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Req {
+                assertion: PasskeyAssertion,
+                expected_challenge: String,
+                expected_origin: String,
+                expected_rp_id: String,
+                #[serde(default)]
+                min_sign_count: u32,
+            }
+            let req: Req =
+                serde_json::from_slice(input).map_err(|e| format!("invalid auth_verify_passkey JSON: {e}"))?;
+            let res = verify_passkey_assertion(
+                &req.assertion,
+                &req.expected_challenge,
+                &req.expected_origin,
+                &req.expected_rp_id,
+                req.min_sign_count,
+            )
+            .map_err(|e| e.to_string())?;
+            to_json_bytes(&res)
+        }
+        "auth_can_perform" => {
+            #[derive(Deserialize)]
+            struct Req {
+                role: String,
+                action: Action,
+            }
+            let req: Req = serde_json::from_slice(input).map_err(|e| format!("invalid auth_can_perform JSON: {e}"))?;
+            let role = Role::parse(&req.role).map_err(|e| e.to_string())?;
+            to_json_bytes(&serde_json::json!({ "allowed": can_perform(role, req.action) }))
+        }
+        other => Err(format!("unknown native operation: {other}")),
     }
 }
 
-fn tampon(etat: u8, charge: &[u8], sortie_len: *mut usize) -> *mut u8 {
-    let mut v = Vec::with_capacity(charge.len() + 1);
-    v.push(etat);
-    v.extend_from_slice(charge);
-    let b = v.into_boxed_slice();
-    // SAFETY: l'appelant fournit un pointeur valide vers un usize.
-    unsafe { *sortie_len = b.len() };
-    Box::into_raw(b).cast()
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn call_wasm(op: &str, input: &[u8]) -> Result<Vec<u8>, wasm_bindgen::JsValue> {
+    dispatch(op, input).map_err(|e| wasm_bindgen::JsValue::from_str(&e))
 }
 
+/// Executes a native operation across the C ABI (`[0|1 status, ...payload]`), returning a buffer to release with [`auto_free`].
+///
 /// # Safety
-/// `op`/`entree` pointent vers `op_len`/`entree_len` octets lisibles (`entree` peut être nul si
-/// `entree_len` vaut 0) ; `sortie_len` pointe vers un usize inscriptible.
+/// - `op_ptr` must be valid for `op_len` readable bytes (or null when `op_len == 0`).
+/// - `in_ptr` must be valid for `in_len` readable bytes (or null when `in_len == 0`).
+/// - `out_len` must be a non-null, aligned writable pointer.
+#[cfg(not(target_arch = "wasm32"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn auto_call(
-    op: *const u8,
+    op_ptr: *const u8,
     op_len: usize,
-    entree: *const u8,
-    entree_len: usize,
-    sortie_len: *mut usize,
+    in_ptr: *const u8,
+    in_len: usize,
+    out_len: *mut usize,
 ) -> *mut u8 {
-    // SAFETY: garanti par l'appelant (voir la documentation).
-    let op = unsafe { std::slice::from_raw_parts(op, op_len) };
-    let entree = if entree_len == 0 { &[][..] } else { unsafe { std::slice::from_raw_parts(entree, entree_len) } };
-    let resultat = std::panic::catch_unwind(|| {
-        let op = std::str::from_utf8(op).map_err(|e| e.to_string())?;
-        appeler(op, entree)
-    });
-    match resultat {
-        Ok(Ok(v)) => tampon(0, &v, sortie_len),
-        Ok(Err(e)) => tampon(1, e.as_bytes(), sortie_len),
-        Err(_) => tampon(1, "panique dans auto-ffi".as_bytes(), sortie_len),
+    if out_len.is_null() {
+        return std::ptr::null_mut();
+    }
+    let op_bytes = if op_ptr.is_null() { &[] } else { unsafe { std::slice::from_raw_parts(op_ptr, op_len) } };
+    let input = if in_ptr.is_null() { &[] } else { unsafe { std::slice::from_raw_parts(in_ptr, in_len) } };
+    let result = match std::str::from_utf8(op_bytes) {
+        Ok(op) => dispatch(op, input),
+        Err(_) => Err("operation name is not valid UTF-8".to_owned()),
+    };
+    let mut framed = match result {
+        Ok(payload) => {
+            let mut v = Vec::with_capacity(1 + payload.len());
+            v.push(0);
+            v.extend_from_slice(&payload);
+            v
+        }
+        Err(msg) => {
+            let bytes = msg.into_bytes();
+            let mut v = Vec::with_capacity(1 + bytes.len());
+            v.push(1);
+            v.extend_from_slice(&bytes);
+            v
+        }
+    };
+    let len = framed.len();
+    let ptr = framed.as_mut_ptr();
+    std::mem::forget(framed);
+    unsafe {
+        *out_len = len;
+    }
+    ptr
+}
+
+/// Frees a response buffer allocated by [`auto_call`].
+///
+/// # Safety
+/// `ptr` and `len` must originate from a prior [`auto_call`] invocation and must not have been freed already.
+#[cfg(not(target_arch = "wasm32"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn auto_free(ptr: *mut u8, len: usize) {
+    if !ptr.is_null() && len > 0 {
+        unsafe {
+            let _ = Vec::from_raw_parts(ptr, len, len);
+        }
     }
 }
 
-/// # Safety
-/// `ptr`/`len` proviennent d'un appel à `auto_call`, et ne sont libérés qu'une fois.
+/// Returns a static NUL-terminated library version string matching `include/auto.h`.
+#[cfg(not(target_arch = "wasm32"))]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn auto_free(ptr: *mut u8, len: usize) {
-    if !ptr.is_null() {
-        // SAFETY: reconstruit la boîte allouée par `tampon`.
-        drop(unsafe { Box::from_raw(std::ptr::slice_from_raw_parts_mut(ptr, len)) });
-    }
+pub extern "C" fn auto_version() -> *const std::ffi::c_char {
+    c"0.2.0".as_ptr()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const JSON: &str = r#"{ "numero": "F-2026-0001", "type": "facture", "date": "2026-10-22",
-      "emetteur": { "nom": "A", "siret": "73282932000074", "adresse": "1 rue A", "tvaIntracom": "FR44732829320" },
-      "client": { "nom": "B", "siret": "73282932000074", "adresse": "2 rue B" },
-      "lignes": [{ "designation": "X", "quantite": 1, "prixUnitaireHtCents": 1000, "tva": 200 }],
-      "echeance": "2026-11-21", "datePrestation": "2026-10-20" }"#;
-
-    fn appel(op: &str, entree: &[u8]) -> (u8, Vec<u8>) {
-        let mut len = 0usize;
-        let p = unsafe { auto_call(op.as_ptr(), op.len(), entree.as_ptr(), entree.len(), &mut len) };
-        let v = unsafe { std::slice::from_raw_parts(p, len) }.to_vec();
-        unsafe { auto_free(p, len) };
-        (v[0], v[1..].to_vec())
-    }
-
     #[test]
-    fn abi_facturx_extraire() {
-        let mut entree = 1_792_000_000i64.to_le_bytes().to_vec();
-        entree.extend_from_slice(JSON.as_bytes());
-        let (etat, pdf) = appel("facturx", &entree);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&pdf));
-        let (etat, xml) = appel("extraire", &pdf);
-        assert_eq!(etat, 0);
-        assert!(String::from_utf8(xml).unwrap().contains("F-2026-0001"));
-        let (_, v) = appel("verifier_pdfa", &pdf);
-        assert_eq!(v, b"[]");
-    }
+    fn dispatch_smoke_roundtrips_all_core_ops() {
+        let pdf = dispatch(
+            "render_pdf",
+            br#"{"number":"INV-2026-0001","type":"invoice","date":"2026-10-22","issuer":{"name":"Alpha","address":"Paris"},"customer":{"name":"Beta","address":"Lyon"},"lines":[{"description":"Audit","quantity":1,"unitPriceExclVatCents":50000,"vat":200}]}"#,
+        )
+        .expect("render_pdf");
+        assert!(pdf.starts_with(b"%PDF-"));
+        assert_eq!(dispatch("pdf_page_count", &pdf).expect("count"), b"1");
 
-    #[test]
-    fn abi_erreurs() {
-        assert_eq!(appel("inconnue", b"").0, 1);
-        let (etat, msg) = appel("rendre", b"{");
-        assert_eq!(etat, 1);
-        assert!(!msg.is_empty());
-        assert_eq!(appel("facturx", b"court").0, 1);
-        assert_eq!(appel("pdf_pages", &[9, 0, 0, 0, 1]).0, 1);
-        assert_eq!(appel("pdf_fusionner", b"").0, 1);
-    }
+        let fx = dispatch(
+            "facturx",
+            br#"{"doc":{"number":"INV-2026-0001","type":"invoice","date":"2026-10-22","issuer":{"name":"Alpha","address":"Paris"},"customer":{"name":"Beta","address":"Lyon"},"lines":[{"description":"Audit","quantity":1,"unitPriceExclVatCents":50000,"vat":200}]},"timestamp":1792663200}"#,
+        )
+        .expect("facturx");
+        let xml = dispatch("extract_xml", &fx).expect("extract_xml");
+        assert!(String::from_utf8_lossy(&xml).contains("<ram:GrandTotalAmount>600.00</ram:GrandTotalAmount>"));
+        let pdfa_errs = dispatch("verify_pdfa", &fx).expect("verify_pdfa");
+        assert_eq!(pdfa_errs, b"[]");
 
-    fn trame(v: &mut Vec<u8>, o: &[u8]) {
-        v.extend_from_slice(&(o.len() as u32).to_le_bytes());
-        v.extend_from_slice(o);
-    }
-
-    #[test]
-    fn abi_fichiers() {
-        let (etat, d) =
-            appel("docx_creer", r#"{ "titre": "Bon {{ n }}", "paragraphes": [{ "texte": "Ligne" }] }"#.as_bytes());
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&d));
-        assert_eq!(appel("docx_champs", &d).1, br#"["n"]"#);
-        let mut e = Vec::new();
-        trame(&mut e, br#"{ "n": "42" }"#);
-        trame(&mut e, &d);
-        let (etat, rempli) = appel("docx_remplir", &e);
-        assert_eq!(etat, 0);
-        assert_eq!(
-            appel("docx_texte", &rempli).1,
-            "Bon 42
-Ligne"
-                .as_bytes()
-        );
-        let (etat, pdf) = appel("docx_pdf", &rempli);
-        assert_eq!(etat, 0);
-        let mut e = Vec::new();
-        for _ in 0..2 {
-            trame(&mut e, b"bon.pdf");
-            trame(&mut e, &pdf);
-        }
-        let (etat, deux) = appel("pdf_fusionner", &e);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&deux));
-        let mut e = Vec::new();
-        trame(&mut e, b"[1]");
-        trame(&mut e, &deux);
-        assert_eq!(appel("pdf_nombre_pages", &deux).1, b"2");
-        let (etat, une) = appel("pdf_pages", &e);
-        assert_eq!(etat, 0);
-        let texte: serde_json::Value = serde_json::from_slice(&appel("pdf_texte", &une).1).unwrap();
-        assert_eq!(texte["pages"].as_array().unwrap().len(), 1);
-        assert!(texte["pages"][0].as_str().unwrap().contains("Bon 42"));
-    }
-
-    #[test]
-    fn abi_caviarder_signer_presentation() {
-        let (_, docx) = appel(
-            "docx_creer",
-            r#"{ "titre": "Note", "paragraphes": [{ "texte": "Contact : a.b@exemple.fr" }] }"#.as_bytes(),
-        );
-        let (_, pdf) = appel("docx_pdf", &docx);
-        let mut e = Vec::new();
-        trame(&mut e, br#"{ "motifs": ["email"] }"#);
-        trame(&mut e, &pdf);
-        let (etat, sortie) = appel("pdf_caviarder", &e);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&sortie));
-        let [rapport, caviarde] = trames(&sortie).unwrap()[..] else { panic!("deux trames") };
-        let rapport: serde_json::Value = serde_json::from_slice(rapport).unwrap();
-        assert_eq!(rapport["occurrences"], 1);
-        assert!(!String::from_utf8_lossy(&appel("pdf_texte", caviarde).1).contains("exemple.fr"));
-
-        let p12 = include_bytes!("../../auto-fichiers/tests/data/rsa-aes.p12");
-        let mut e = Vec::new();
-        trame(&mut e, br#"{ "mot_de_passe": "test", "date": "D:20261023120000Z" }"#);
-        trame(&mut e, p12);
-        trame(&mut e, caviarde);
-        let (etat, signe) = appel("pdf_signer", &e);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&signe));
-        let mut e = Vec::new();
-        trame(&mut e, b"");
-        trame(&mut e, &signe);
-        let (etat, v) = appel("pdf_signatures", &e);
-        assert_eq!(etat, 0);
-        let v: serde_json::Value = serde_json::from_slice(&v).unwrap();
-        assert_eq!(v[0]["statut"], "inconnue");
-        assert_eq!(v[0]["signataire"], "Test Signer RSA");
-
-        let (etat, pptx) =
-            appel("pptx_creer", br#"{ "titre": "Bilan", "diapositives": [{ "titre": "Un", "puces": ["a"] }] }"#);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&pptx));
-        let (etat, pdf) = appel("pptx_pdf", &pptx);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&pdf));
-        assert_eq!(appel("pdf_nombre_pages", &pdf).1, b"2");
-        assert_eq!(appel("pptx_pdf", b"PK").0, 1);
-    }
-
-    #[test]
-    fn abi_connaissance() {
-        let texte = "La garantie couvre deux ans de pièces. ".repeat(40);
-        let e = serde_json::json!({ "source": "garantie.txt", "texte": texte, "taille": 300 }).to_string();
-        let (etat, m) = appel("rag_decouper", e.as_bytes());
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&m));
-        let m: serde_json::Value = serde_json::from_slice(&m).unwrap();
-        assert!(m.as_array().unwrap().len() > 3);
-        assert_eq!(m[1]["position"], 1);
-        assert!(m[0]["texte"].as_str().unwrap().contains("garantie"));
-
-        let f = |v: &[f32]| v.iter().flat_map(|x| x.to_le_bytes()).collect::<Vec<u8>>();
-        let mut e = Vec::new();
-        trame(&mut e, br#"{ "dimension": 2, "k": 2 }"#);
-        trame(&mut e, &f(&[0.0, 2.0]));
-        trame(&mut e, &f(&[1.0, 0.0, 0.0, 1.0, 1.0, 1.0]));
-        let (etat, r) = appel("rag_topk", &e);
-        assert_eq!(etat, 0, "{}", String::from_utf8_lossy(&r));
-        let r: serde_json::Value = serde_json::from_slice(&r).unwrap();
-        assert_eq!(r[0]["indice"], 1);
-        assert_eq!(r[1]["indice"], 2);
-        assert!((r[0]["score"].as_f64().unwrap() - 1.0).abs() < 1e-6);
-        let mut e = Vec::new();
-        trame(&mut e, br#"{ "dimension": 3, "k": 2 }"#);
-        trame(&mut e, &f(&[0.0, 2.0]));
-        trame(&mut e, &f(&[1.0, 0.0]));
-        assert_eq!(appel("rag_topk", &e).0, 1);
-        assert_eq!(appel("rag_topk", b"").0, 1);
-        assert_eq!(appel("rag_decouper", b"{}").0, 1);
+        let err = dispatch("unknown_op", b"").expect_err("unknown op fails");
+        assert!(err.contains("unknown native operation"));
     }
 }

@@ -1,8 +1,15 @@
 {
-  "name": "@auto/domain",
-  "version": "0.0.0",
+  "name": "@aphrody/auto-domain",
+  "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "exports": "./src/index.ts"
+  "exports": {
+    ".": "./src/index.ts",
+    "./hr": "./src/hr.ts",
+    "./accounting": "./src/accounting.ts"
+  },
+  "dependencies": {
+    "@aphrody/auto-platform": "workspace:*"
+  }
 }

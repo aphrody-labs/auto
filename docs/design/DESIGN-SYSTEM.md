@@ -2,7 +2,7 @@
 
 Direction : sobre, dense, lisible, de confiance (finance B2B). Style plat à bordures fines, sans verre dépoli ni dégradés (le style Glassmorphism proposé par l'outil de recherche a été écarté : contraste instable, inadapté à des tableaux de chiffres). Original : aucune couleur, police ni logo de Pennylane ou d'Abby.
 
-Source unique : `packages/ui/src/tokens.ts` (`@auto/ui`), aligné sur Material 3 : les couleurs sont les rôles `--md-sys-color-*` que `@aphrody/m3-tokens` dérive de la graine de marque #0F6B5C (schéma `tonalSpot`, clair et sombre). Succès et avertissement sont des couleurs personnalisées M3 tirées de leurs propres graines. `tokens.css` en est généré (`bun packages/ui/src/gen.ts`) et un test vérifie l'identité exacte. Les composants consomment les alias `--auto-*` (ou directement les rôles `--md-sys-color-*`), jamais d'hexadécimal brut ; il n'existe pas de palette parallèle.
+Source unique : `packages/ui/src/tokens.ts` (`@aphrody/auto-ui`), aligné sur Material 3 : les couleurs sont les rôles `--md-sys-color-*` que `@aphrody/m3-tokens` dérive de la graine de marque #0F6B5C (schéma `tonalSpot`, clair et sombre). Succès et avertissement sont des couleurs personnalisées M3 tirées de leurs propres graines. `tokens.css` en est généré (`bun packages/ui/src/gen.ts`) et un test vérifie l'identité exacte. Les composants consomment les alias `--auto-*` (ou directement les rôles `--md-sys-color-*`), jamais d'hexadécimal brut ; il n'existe pas de palette parallèle.
 
 ## Couleurs (contrastes WCAG vérifiés par `tokens.test.ts`)
 
@@ -69,7 +69,7 @@ Règles : un seul bouton primaire par écran ; la couleur ne porte jamais seule 
 
 - Structure : en-tête (émetteur, client, dates), lignes, bloc totaux collant, aperçu PDF en panneau latéral (>= 1024 px) ou onglet.
 - Ligne : désignation, quantité, unité, PU HT, TVA (0 / 2,1 / 5,5 / 10 / 20 %), total HT. Ajouter (bouton visible), supprimer (confirmation avec annulation), réordonner (poignée + boutons haut/bas au clavier).
-- Totaux : HT, TVA par taux, TTC, calculés par `@auto/domain` (centimes entiers) ; jamais recalculés côté composant.
+- Totaux : HT, TVA par taux, TTC, calculés par `@aphrody/auto-domain` (centimes entiers) ; jamais recalculés côté composant.
 - Franchise TVA : bandeau d'information avec la mention art. 293 B ; colonnes TVA masquées.
 - Mentions manquantes : bandeau avertissement + résumé d'erreurs focalisable listant chaque champ.
 - Émis : lecture seule, action unique « Créer un avoir ». Brouillon : enregistrement automatique, confirmation avant fermeture avec modifications non sauvegardées.
@@ -102,7 +102,7 @@ Contraste AA testé automatiquement ; navigation clavier complète, lien d'évit
 ## Utilisation
 
 ```css
-@import "@auto/ui/tokens.css";
+@import "@aphrody/auto-ui/tokens.css";
 .bouton-primaire {
   background: var(--auto-primaire);
   color: var(--auto-sur-primaire);
@@ -110,5 +110,5 @@ Contraste AA testé automatiquement ; navigation clavier complète, lien d'évit
 ```
 
 ```ts
-import { palettes, statuts, contraste } from "@auto/ui";
+import { palettes, statuts, contraste } from "@aphrody/auto-ui";
 ```

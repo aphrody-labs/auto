@@ -1,8 +1,14 @@
 {
-  "name": "@auto/native",
-  "version": "0.0.0",
+  "name": "@aphrody/auto-native",
+  "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "exports": "./src/index.ts"
+  "exports": {
+    ".": "./src/index.ts",
+    "./wasm": "./wasm/auto_ffi_bg.wasm"
+  },
+  "dependencies": {
+    "@aphrody/auto-platform": "workspace:*"
+  }
 }

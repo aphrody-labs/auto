@@ -1,97 +1,182 @@
 #!/usr/bin/env bun
-// CLI `auto` : `auto agent [demande]` (boucle d'agent), `auto mcp` (serveur MCP stdio) et `auto flux` (workflows).
-import { clientOpenAi, configLlmDepuisEnv, type Message } from "@auto/ingest/llm";
-import { apiDepuisEnv, executerAgent, outil, OUTILS, ServeurMcp } from "@auto/agent";
+// Auto CLI & MCP entrypoint — usable BOTH as CLI binary (`auto-cli`) AND as a library (`export { runCli }`).
+import { createAutoClientFromEnv } from "@aphrody/auto-client";
+import { t, type Locale } from "@aphrody/auto-i18n";
+import { llmConfigFromEnv, openAiClient, type LlmMessage } from "@aphrody/auto-platform/llm";
+import {
+  authGenerateApiKey,
+  authHashPassword,
+  authJwks,
+  authTotpCode,
+  authVerifyPassword,
+  initNative,
+} from "@aphrody/auto-native";
+import { handleMcpJsonRpc, importLegacyN8nWorkflow, runAgentTurn, type JsonRpcRequest } from "@aphrody/auto-services";
 
-const AIDE = `auto : agent et serveur MCP de l'API Auto
+const HELP = `auto-cli — Auto CLI, AI Agent & MCP stdio server
 
-Usage :
-  auto agent [demande…]   exécute une demande (sans demande : conversation sur l'entrée standard)
-  auto mcp                serveur MCP sur stdio (pour Claude Code, Claude Desktop, etc.)
-  auto outils             liste les outils
-  auto flux               liste les workflows d'automatisation
-  auto flux importer <fichier.json>   crée un workflow depuis sa définition ou un export n8n
-  auto flux lancer <id> [json]        exécute un workflow, données d'entrée facultatives
-  auto flux catalogue     types de nœuds et modèles
+Usage:
+  auto-cli mcp                             Run JSON-RPC 2.0 MCP server on stdin/stdout
+  auto-cli tools                           List remote API agent/MCP tools
+  auto-cli agent [prompt...]               Execute an interactive or one-shot LLM + MCP turn
+  auto-cli workflows [list|run|import]     Manage or execute DAG workflows remotely
+  auto-cli auth <hash|verify|keygen|totp>  Run local Rust auto-auth operations
+  auto-cli health                          Check configured Auto server health
 
-Variables :
-  AUTO_API_URL   URL de l'API (défaut https://auto.aphrody.com ; http://localhost:3000 en développement)
-  AUTO_TOKEN     jeton API de l'utilisateur (POST /v1/jetons) — obligatoire
-  AUTO_LLM_URL   API compatible OpenAI pour \`auto agent\` (ex. http://localhost:8080/v1)
-  AUTO_LLM_MODEL, AUTO_LLM_KEY, AUTO_LLM_TIMEOUT_MS`;
+Environment:
+  AUTO_API_URL     Base URL (default https://auto.aphrody.com; supports comma-separated AUTO_UPSTREAMS)
+  AUTO_TOKEN       API key (auto_...) or bearer token
+  AUTO_COMPANY_ID  Active company ID
+  AUTO_LLM_URL     OpenAI-compatible LLM base URL for 'agent'
+  AUTO_LLM_MODEL   Model name
+  AUTO_LLM_KEY     Optional API key`;
 
-const erreur = (m: string): never => {
-  console.error(`auto : ${m}`);
-  process.exit(1);
-};
-
-async function agent(demande: string[]) {
-  const api = apiDepuisEnv();
-  const c = configLlmDepuisEnv() ?? erreur("AUTO_LLM_URL manquant (llama-server, Ollama…)");
-  const llm = clientOpenAi(c);
-  const surOutil = (nom: string, _args: unknown, ok: boolean) => console.error(`  · ${nom}${ok ? "" : " (erreur)"}`);
-  if (demande.length) {
-    console.log((await executerAgent(demande.join(" "), { llm, api, surOutil })).reponse);
-    return;
+async function ensureWasm(): Promise<void> {
+  const wasmUrl = new URL("../../../packages/native/wasm/auto_ffi_bg.wasm", import.meta.url);
+  if (await Bun.file(wasmUrl).exists()) {
+    initNative(await Bun.file(wasmUrl).bytes());
   }
-  let historique: Message[] = [];
-  process.stderr.write("> ");
-  for await (const ligne of console) {
-    if (ligne.trim()) {
-      const t = await executerAgent(ligne, { llm, api, historique, surOutil });
-      historique = t.messages;
-      console.log(t.reponse);
+}
+
+export async function runCli(argv = process.argv.slice(2)): Promise<number> {
+  const [cmd, ...rest] = argv;
+  const locale: Locale = process.env.AUTO_LOCALE === "fr" ? "fr" : "en";
+
+  if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
+    console.log(HELP);
+    return 0;
+  }
+
+  if (cmd === "health") {
+    const client = createAutoClientFromEnv();
+    console.log(JSON.stringify(await client.health(), null, 2));
+    return 0;
+  }
+
+  if (cmd === "auth") {
+    await ensureWasm();
+    const [sub, a, b] = rest;
+    if (sub === "hash" && a) {
+      console.log(authHashPassword(a));
+      return 0;
     }
+    if (sub === "verify" && a && b) {
+      console.log(JSON.stringify({ valid: authVerifyPassword(a, b) }));
+      return 0;
+    }
+    if (sub === "keygen") {
+      console.log(JSON.stringify(authGenerateApiKey(a || "auto_"), null, 2));
+      return 0;
+    }
+    if (sub === "totp" && a) {
+      console.log(JSON.stringify(authTotpCode(a), null, 2));
+      return 0;
+    }
+    if (sub === "jwks" && a) {
+      console.log(JSON.stringify(authJwks({ masterSecret: a }), null, 2));
+      return 0;
+    }
+    console.error("Usage: auto-cli auth <hash|verify|keygen|totp|jwks>");
+    return 1;
+  }
+
+  const client = createAutoClientFromEnv();
+
+  if (cmd === "tools") {
+    const res = await client.callMcp("tools/list");
+    const tools = (res.result as { tools?: { name: string; description: string }[] })?.tools ?? [];
+    for (const tool of tools) console.log(`${tool.name.padEnd(28)} ${tool.description}`);
+    return 0;
+  }
+
+  if (cmd === "mcp") {
+    const decoder = new TextDecoder();
+    const reader = Bun.stdin.stream().getReader();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl = buf.indexOf("\n");
+      while (nl !== -1) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        nl = buf.indexOf("\n");
+        if (!line) continue;
+        try {
+          const req = JSON.parse(line) as JsonRpcRequest;
+          if (req.method === "initialize" || req.method === "ping" || req.method === "notifications/initialized") {
+            const localReply = await handleMcpJsonRpc(req, async () => ({}));
+            if (localReply) process.stdout.write(`${JSON.stringify(localReply)}\n`);
+          } else {
+            const remoteReply = await client.callMcp(req.method, req.params ?? {});
+            const { jsonrpc: _jr, id: _id, ...rest } = remoteReply;
+            process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: req.id ?? null, ...rest })}\n`);
+          }
+        } catch (err) {
+          process.stdout.write(
+            `${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: err instanceof Error ? err.message : "Parse error" } })}\n`,
+          );
+        }
+      }
+    }
+    return 0;
+  }
+
+  if (cmd === "workflows") {
+    const [action = "list", arg1, arg2] = rest;
+    if (action === "list") {
+      console.log(JSON.stringify(await client.listAutomations(), null, 2));
+      return 0;
+    }
+    if (action === "import" && arg1) {
+      const raw = await Bun.file(arg1).json();
+      const def = Array.isArray(raw.nodes) && raw.connections ? importLegacyN8nWorkflow(raw) : (raw.definition ?? raw);
+      console.log(JSON.stringify(await client.saveAutomation({ name: raw.name ?? arg1, definition: def }), null, 2));
+      return 0;
+    }
+    if (action === "run" && arg1) {
+      const input = arg2 ? JSON.parse(arg2) : {};
+      console.log(JSON.stringify(await client.runAutomation(arg1, input), null, 2));
+      return 0;
+    }
+    console.error("Usage: auto-cli workflows <list|import <file.json>|run <id> [json]>");
+    return 1;
+  }
+
+  if (cmd === "agent") {
+    const llmCfg = llmConfigFromEnv();
+    if (!llmCfg) {
+      console.error(t(locale, "AUTO_LLM_URL is required for agent mode"));
+      return 1;
+    }
+    const llm = openAiClient(llmCfg);
+    const execute = async (name: string, args: Record<string, unknown>) => {
+      const r = await client.mcpCallTool(name, args);
+      return r.result ?? r.error;
+    };
+    if (rest.length) {
+      const turn = await runAgentTurn(rest.join(" "), { llm, execute, locale });
+      console.log(turn.reply);
+      return 0;
+    }
+    let history: LlmMessage[] | undefined;
     process.stderr.write("> ");
+    for await (const line of console) {
+      if (line.trim()) {
+        const turn = await runAgentTurn(line, { llm, execute, history, locale });
+        history = turn.messages;
+        console.log(turn.reply);
+      }
+      process.stderr.write("> ");
+    }
+    return 0;
   }
+
+  console.error(`Unknown command: ${cmd}`);
+  return 1;
 }
 
-/** Workflows : mêmes outils que le serveur MCP (un seul propriétaire des appels). */
-async function flux([action, ...args]: string[]) {
-  const api = apiDepuisEnv();
-  const lancer = (nom: string, a: Record<string, unknown> = {}) => outil(nom)!.executer(api, a);
-  let r: unknown;
-  if (!action) r = await lancer("lister_automatisations");
-  else if (action === "catalogue") r = await lancer("catalogue_automatisation");
-  else if (action === "importer") {
-    const chemin = args[0] ?? erreur("fichier manquant : auto flux importer <fichier.json>");
-    const f = Bun.file(chemin);
-    if (!(await f.exists())) erreur(`fichier introuvable : ${chemin}`);
-    const j = (await f.json()) as Record<string, unknown>;
-    // Export n8n reconnu à sa forme (nodes, connections) : converti par l'API.
-    r =
-      Array.isArray(j.nodes) && j.connections
-        ? await lancer("importer_n8n", { workflow: j })
-        : await lancer("creer_automatisation", "definition" in j ? j : { nom: chemin, definition: j });
-  } else if (action === "lancer") {
-    const id = args[0] ?? erreur("identifiant manquant : auto flux lancer <id> [json]");
-    r = await lancer("executer_automatisation", { id, donnees: args[1] ? JSON.parse(args[1]) : undefined });
-  } else erreur(`action inconnue : flux ${action}`);
-  console.log(JSON.stringify(r, null, 2));
-}
-
-const [commande, ...reste] = Bun.argv.slice(2);
-switch (commande) {
-  case "agent":
-    await agent(reste);
-    break;
-  case "mcp": {
-    const s = new ServeurMcp(apiDepuisEnv());
-    await s.servir(Bun.stdin.stream(), (l) => process.stdout.write(`${l}\n`));
-    break;
-  }
-  case "flux":
-    await flux(reste);
-    break;
-  case "outils":
-    for (const o of OUTILS) console.log(`${o.nom.padEnd(24)} ${o.description}`);
-    break;
-  case undefined:
-  case "aide":
-  case "--help":
-  case "-h":
-    console.log(AIDE);
-    break;
-  default:
-    erreur(`commande inconnue : ${commande}\n\n${AIDE}`);
+if (import.meta.main) {
+  process.exitCode = await runCli(process.argv.slice(2));
 }

@@ -8,54 +8,51 @@ rust-version = "1.97"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-# Crates publiés sur crates.io et GitHub (storytold/deckcraft, gridcraft, pdfcraft, wordcraft).
 aphrody-rag-core = { version = "=1.4.7", default-features = false }
-deckcraft-model = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
-deckcraft-pdf = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
-deckcraft-pptx = { git = "https://github.com/storytold/deckcraft", tag = "v0.6.1" }
-gridcraft-core = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
-gridcraft-calc = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
-gridcraft-model = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
-gridcraft-xlsx = { git = "https://github.com/storytold/gridcraft", tag = "v0.6.1" }
-pdfcraft-annot = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-cos = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-create = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-fonts = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-model = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-organize = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-preflight = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-redact = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-render = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-pdfcraft-sign = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-wordcraft-doc = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
-wordcraft-docx = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
-wordcraft-pdf = { git = "https://github.com/storytold/wordcraft", tag = "v0.6.1" }
-
+argon2 = { version = "0.6", default-features = false, features = ["alloc"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+base64 = "0.23"
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+craft-csv = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-docx = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-i18n = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-ods = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-opc = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2", default-features = false, features = ["cos"] }
+craft-pkcs7 = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-pptx = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-sheet = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-wordmodel = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-xls = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-xlsx = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+craft-xml = { git = "https://github.com/storytold/craft-libs", rev = "ccbc4b756c168b31358bfa98e71225e9dacb74a2" }
+ed25519-dalek = "3.0.0"
+flate2 = { version = "1.1", default-features = false, features = ["zlib-rs"] }
+getrandom = "0.4"
+hmac = "0.13"
+p256 = { version = "0.14", default-features = false, features = ["ecdsa", "sha256"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
+scrypt = { version = "0.12", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha1 = "0.11"
+sha2 = "0.11"
+skrifa = { version = "0.47", default-features = false, features = ["std"] }
+subtle = "2.6"
 thiserror = "2"
-
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "io-std", "signal"] }
+toml = "1.2"
+wasm-bindgen = "0.2"
 
 [profile.release]
 strip = true
 lto = "fat"
 codegen-units = 1
+opt-level = 3
 
-[profile.dev]
-split-debuginfo = "unpacked"
-incremental = true
-codegen-units = 16
-debug = "limited"
-
-[profile.dev.build-override]
-codegen-units = 16
-split-debuginfo = "unpacked"
-debug = "limited"
-
-[patch.crates-io]
-hayro-interpret = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-hayro = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-hayro-syntax = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-hayro-jbig2 = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-lopdf = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
-vello_common = { git = "https://github.com/storytold/pdfcraft", tag = "v0.9.0" }
+[profile.wasm-lto]
+inherits = "release"
+opt-level = "z"
+strip = "none"

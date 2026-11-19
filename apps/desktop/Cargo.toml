@@ -1,0 +1,43 @@
+[workspace]
+members = [".", "bench"]
+resolver = "2"
+
+[package]
+name = "auto-desktop"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "Native 120 FPS GPUI Desktop workspace & library for Auto powered by gpui-kit + gpui-fast"
+
+[lib]
+name = "auto_desktop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "auto-desktop"
+path = "src/main.rs"
+
+[features]
+default = []
+bench-support = []
+
+[dependencies]
+auto-auth = { path = "../../crates/auto-auth" }
+auto-facturx = { path = "../../crates/auto-facturx" }
+auto-i18n = { path = "../../crates/auto-i18n" }
+auto-model = { path = "../../crates/auto-model" }
+auto-theme = { path = "../../crates/auto-theme" }
+gpui-kit = { version = "0.10.0", features = ["component", "assets", "gpui-fast"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[dev-dependencies]
+gpui-kit = { version = "0.10.0", features = ["component", "assets", "gpui-fast", "test-support"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+strip = true

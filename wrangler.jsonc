@@ -1,0 +1,94 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "auto",
+  "main": "apps/server/src/worker.ts",
+  "compatibility_date": "2026-11-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "limits": {
+    "cpu_ms": 500
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  },
+  "assets": {
+    "directory": "apps/ui/dist/web",
+    "binding": "ASSETS"
+  },
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": ["**/*.wasm"],
+      "fallthrough": true
+    },
+    {
+      "type": "Text",
+      "globs": ["**/*.sql"],
+      "fallthrough": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "auto",
+      "database_id": "${CLOUDFLARE_D1_AUTO_ID}"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COMPANY_DO",
+        "class_name": "CompanyDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["CompanyDO"]
+    }
+  ],
+  "workflows": [
+    {
+      "name": "auto-automation-workflow",
+      "binding": "AUTOMATION_WORKFLOW",
+      "class_name": "AutomationWorkflow"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "aphrody-assets"
+    },
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "aphrody-backups"
+    },
+    {
+      "binding": "RELEASES",
+      "bucket_name": "aphrody-releases"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
+  "routes": [
+    {
+      "pattern": "auto.aphrody.com",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "AUTO_MODE": "serverless",
+    "AUTO_URL_APP": "https://auto.aphrody.com"
+  }
+}

@@ -1,21 +1,59 @@
-node_modules
-target
+# Dependencies & build output (github/gitignore Node + Rust + Python)
+node_modules/
+**/target/
+**/*.rs.bk
+**/mutants.out*/
+rustc-ice-*.txt
+*.pdb
 /data
 *.sqlite
-.cache
-dist
+*.db
+.cache/
+dist/
+coverage/
+.turbo/
+.wrangler/
+wrangler.deploy.jsonc
+**/wrangler-dry-*/
+*.tsbuildinfo
+*.log
 # Python environment and caches for the local video voice tool.
 /scripts/video-voice/.venv/
 /scripts/video-voice/__pycache__/
 /scripts/video-voice/.pytest_cache/
 /scripts/video-voice/.ruff_cache/
-.claude/
 apps/desktop/src-tauri/gen
 var/
+.neon
+# Hydraté à la demande depuis Cloudflare R2 via `bun run craft:web` (aucun binaire WASM dans Git).
+/apps/web/public/craft/
+
+# Secrets and local state (STANDARD.md section 2)
+.private/
+.local/
+.claude/
 .env
 .env.*
 !.env.example
 !.env.*.example
-.neon
-# Hydraté à la demande depuis Cloudflare R2 via `bun run craft:web` (aucun binaire WASM dans Git).
-/apps/web/public/craft/
+.dev.vars
+*.pem
+*.key
+*.p12
+*.pfx
+!crates/auto-fichiers/tests/data/**
+
+# Editors and OS (github/gitignore Global)
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+!*.code-workspace

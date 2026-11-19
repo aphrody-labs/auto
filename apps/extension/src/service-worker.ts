@@ -1,141 +1,129 @@
 /// <reference types="chrome" />
-// Service worker de l'extension auto : menu contextuel « Envoyer la facture à auto » et badge des factures à
-// vérifier. Aucun état en variable globale : réglages et compteurs vivent dans chrome.storage.
 import {
-  INSTANCE_PAR_DEFAUT,
-  TAILLE_MAX,
-  erreurApi,
-  messageDepot,
-  motifHote,
-  nomFichier,
-  texteBadge,
-  typeFichier,
-  urlDepot,
-  type Recue,
-  type Reglages,
+  badgeText,
+  DEFAULT_INSTANCE,
+  detectFileMime,
+  formatApiError,
+  formatIngestNotification,
+  hostPattern,
+  ingestUrl,
+  MAX_UPLOAD_BYTES,
+  sanitizeFilename,
+  type ExtensionSettings,
+  type IngestResponse,
 } from "./lib";
 
-const MENU_LIEN = "envoyer-lien";
-const MENU_PAGE = "envoyer-page";
-const ALARME = "badge";
-/** Couleur du badge : rôle M3 primary de @auto/ui (thème clair) ; l'API du badge exige une couleur explicite. */
-const COULEUR_BADGE = "#056b5b";
+const MENU_LINK = "send-link-to-auto";
+const MENU_PAGE = "send-page-to-auto";
+const ALARM_NAME = "refresh-badge";
+const BADGE_COLOR = "#00695C";
 
-async function reglages(): Promise<Reglages> {
-  const r = await chrome.storage.local.get(["instance", "jeton"]);
-  return { instance: (r.instance as string) || INSTANCE_PAR_DEFAUT, jeton: (r.jeton as string) || "" };
+async function loadSettings(): Promise<ExtensionSettings> {
+  const r = await chrome.storage.local.get(["instance", "token"]);
+  return { instance: (r.instance as string) || DEFAULT_INSTANCE, token: (r.token as string) || "" };
 }
 
-async function notifier(titre: string, message: string) {
+async function notify(title: string, message: string) {
   await chrome.notifications.create({
     type: "basic",
     iconUrl: chrome.runtime.getURL("icons/icon-128.png"),
-    title: titre,
+    title,
     message,
   });
 }
 
-async function majBadge() {
-  const { instance, jeton } = await reglages();
-  if (!jeton) {
+async function refreshBadge() {
+  const { instance, token } = await loadSettings();
+  if (!token) {
     await chrome.action.setBadgeText({ text: "" });
     return;
   }
   try {
-    const r = await fetch(`${instance}/v1/factures-recues?statut=a_verifier`, {
-      headers: { authorization: `Bearer ${jeton}` },
-    });
+    const r = await fetch(`${instance}/v1/received-invoices`, { headers: { authorization: `Bearer ${token}` } });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const n = ((await r.json()) as unknown[]).length;
-    await chrome.storage.local.set({ aVerifier: n, derniereMaj: new Date().toISOString(), erreurBadge: null });
-    await chrome.action.setBadgeBackgroundColor({ color: COULEUR_BADGE });
-    await chrome.action.setBadgeText({ text: texteBadge(n) });
+    const list = (await r.json()) as { status?: string }[];
+    const pending = list.filter((item) => item.status === "review").length;
+    await chrome.storage.local.set({ pendingReview: pending, updatedAt: new Date().toISOString(), badgeError: null });
+    await chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
+    await chrome.action.setBadgeText({ text: badgeText(pending) });
     await chrome.action.setTitle({
-      title: n ? `auto : ${n} facture(s) à vérifier` : "auto : aucune facture à vérifier",
+      title: pending ? `Auto: ${pending} invoice(s) to review` : "Auto: no pending invoices",
     });
   } catch (e) {
-    await chrome.storage.local.set({ erreurBadge: e instanceof Error ? e.message : String(e) });
+    await chrome.storage.local.set({ badgeError: e instanceof Error ? e.message : String(e) });
     await chrome.action.setBadgeText({ text: "" });
   }
 }
 
-async function envoyer(url: string, autorisation: Promise<boolean>) {
+async function sendUrl(url: string, permissionPromise: Promise<boolean>) {
   try {
-    if (!(await autorisation))
-      return await notifier("Accès refusé", "Sans accès à ce site, auto ne peut pas récupérer la facture.");
-    const { instance, jeton } = await reglages();
-    if (!jeton) {
-      await notifier("Extension à configurer", "Ajoutez votre jeton API auto dans les réglages de l'extension.");
+    if (!(await permissionPromise)) {
+      return await notify("Access denied", "Permission was not granted for that host.");
+    }
+    const { instance, token } = await loadSettings();
+    if (!token) {
+      await notify("Setup required", "Add your Auto API token in extension settings.");
       return await chrome.runtime.openOptionsPage();
     }
-    const source = await fetch(url, { credentials: "include" });
-    if (!source.ok) throw new Error(`Téléchargement impossible (HTTP ${source.status})`);
-    const octets = new Uint8Array(await source.arrayBuffer());
-    if (octets.length > TAILLE_MAX) throw new Error("Fichier trop volumineux (20 Mo au plus)");
-    const type = typeFichier(octets);
-    if (!type) throw new Error("Ce lien ne mène ni à un PDF ni à une facture XML");
-    const nom = nomFichier(url, source.headers.get("content-disposition"), type);
-    const r = await fetch(urlDepot(instance, nom), {
+    const src = await fetch(url, { credentials: "include" });
+    if (!src.ok) throw new Error(`Download failed (HTTP ${src.status})`);
+    const bytes = new Uint8Array(await src.arrayBuffer());
+    if (bytes.length > MAX_UPLOAD_BYTES) throw new Error("File exceeds 20 MiB limit");
+    const mime = detectFileMime(bytes);
+    if (!mime) throw new Error("Target URL is neither a PDF nor a Factur-X XML document");
+    const name = sanitizeFilename(url, src.headers.get("content-disposition"), mime);
+    const res = await fetch(ingestUrl(instance, name), {
       method: "POST",
-      headers: { authorization: `Bearer ${jeton}`, "content-type": type },
-      body: octets,
+      headers: { authorization: `Bearer ${token}`, "content-type": mime },
+      body: bytes,
     });
-    const corps = await r.json().catch(() => null);
-    if (!r.ok) throw new Error(erreurApi(r.status, corps));
-    const m = messageDepot(corps as Recue, nom);
-    await notifier(m.titre, m.message);
-    await majBadge();
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(formatApiError(res.status, body));
+    const msg = formatIngestNotification(body as IngestResponse, name);
+    await notify(msg.title, msg.message);
+    await refreshBadge();
   } catch (e) {
-    await notifier("Envoi impossible", e instanceof Error ? e.message : String(e));
+    await notify("Upload failed", e instanceof Error ? e.message : String(e));
   }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
-  chrome.contextMenus.create({ id: MENU_LIEN, title: "Envoyer la facture à auto", contexts: ["link"] });
-  // Page ouverte dans le lecteur PDF de Chrome, ou XML affiché : même action sur la page elle-même.
+  chrome.contextMenus.create({ id: MENU_LINK, title: "Send invoice to Auto", contexts: ["link"] });
   chrome.contextMenus.create({
     id: MENU_PAGE,
-    title: "Envoyer cette facture à auto",
+    title: "Send current document to Auto",
     contexts: ["page"],
     documentUrlPatterns: ["*://*/*.pdf", "*://*/*.pdf?*", "*://*/*.xml", "*://*/*.xml?*"],
   });
-  await chrome.alarms.create(ALARME, { periodInMinutes: 15 });
-  await majBadge();
+  await chrome.alarms.create(ALARM_NAME, { periodInMinutes: 15 });
+  await refreshBadge();
 });
 
-chrome.runtime.onStartup.addListener(() => void majBadge());
-
+chrome.runtime.onStartup.addListener(() => void refreshBadge());
 chrome.alarms.onAlarm.addListener((a) => {
-  if (a.name === ALARME) void majBadge();
+  if (a.name === ALARM_NAME) void refreshBadge();
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
-  const cible = info.menuItemId === MENU_LIEN ? info.linkUrl : info.pageUrl;
-  if (!cible || !/^https?:/.test(cible)) {
-    void notifier("Lien non pris en charge", "Seuls les liens http(s) vers un PDF ou un XML peuvent être envoyés.");
+  const target = info.menuItemId === MENU_LINK ? info.linkUrl : info.pageUrl;
+  if (!target || !/^https?:/.test(target)) {
+    void notify("Unsupported link", "Only http(s) PDF and XML links can be uploaded.");
     return;
   }
-  // Le clic donne accès à l'onglet courant (activeTab). Un fichier hébergé ailleurs exige une autorisation
-  // demandée ici même, avant tout await : le geste de l'utilisateur ne survit pas à une attente.
-  const autreSite = new URL(cible).origin !== new URL(info.pageUrl ?? cible).origin;
-  const autorisation = autreSite ? chrome.permissions.request({ origins: [motifHote(cible)] }) : Promise.resolve(true);
-  void envoyer(cible, autorisation);
+  const crossSite = new URL(target).origin !== new URL(info.pageUrl ?? target).origin;
+  const perm = crossSite ? chrome.permissions.request({ origins: [hostPattern(target)] }) : Promise.resolve(true);
+  void sendUrl(target, perm);
 });
 
-// Messages des pages de l'extension uniquement (popup, tests) : mise à jour du badge, envoi d'une URL de facture.
-chrome.runtime.onMessage.addListener((m: { type?: string; url?: string }, expediteur, repondre) => {
-  // Pages de l'extension seulement : un script de contenu aurait l'URL d'une page web.
-  if (expediteur.id !== chrome.runtime.id || !expediteur.url?.startsWith(chrome.runtime.getURL(""))) return false;
+chrome.runtime.onMessage.addListener((msg: { type?: string; url?: string }, sender, reply) => {
+  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(""))) return false;
   const action =
-    m?.type === "majBadge"
-      ? majBadge
-      : m?.type === "envoyer" && typeof m.url === "string" && /^https?:/.test(m.url)
-        ? () => envoyer(m.url!, Promise.resolve(true))
+    msg.type === "refreshBadge"
+      ? refreshBadge
+      : msg.type === "send" && typeof msg.url === "string" && /^https?:/.test(msg.url)
+        ? () => sendUrl(msg.url!, Promise.resolve(true))
         : null;
   if (!action) return false;
-  (async () => {
-    await action();
-    repondre({ ok: true });
-  })();
+  void action().then(() => reply({ ok: true }));
   return true;
 });

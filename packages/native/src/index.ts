@@ -1,315 +1,483 @@
-// Pont bun:ffi vers crates/auto-ffi : rendu PDF, Factur-X, XML CII, extraction, contrôle PDF/A, tableurs,
-// fichiers PDF (fusion, pages, texte) et Word (gabarit, création, export PDF), base de connaissances (découpage,
-// plus proches voisins).
-// Bibliothèque : AUTO_FFI_LIB, sinon dist/native/<plateforme>/ (bun run build:native).
-import { dlopen, FFIType, toArrayBuffer, type Pointer } from "bun:ffi";
-import { existsSync } from "node:fs";
+// Pure WebAssembly bridge to `crates/auto-ffi` (`wasm-bindgen --target web`).
+// Supports explicit static `.wasm` import in Cloudflare Workers (`initNative(wasmModule)`)
+// and lazy local byte loading in Bun/self-hosted environments (zero top-level `node:fs` import).
+import type { Native } from "@aphrody/auto-platform";
+import type { Locale } from "@aphrody/auto-platform/i18n";
+import * as rawWasm from "../wasm/auto_ffi.js";
 
-const PLATEFORMES: Record<string, string> = {
-  "linux-x64": "linux-x64/libauto_ffi.so",
-  "win32-x64": "windows-x64/auto_ffi.dll",
-};
+export type { Locale };
 
-function chemin(): string {
-  if (Bun.env.AUTO_FFI_LIB) return Bun.env.AUTO_FFI_LIB;
-  const rel = PLATEFORMES[`${process.platform}-${process.arch}`];
-  if (!rel) throw new Error(`auto-ffi : plateforme non prise en charge (${process.platform}-${process.arch})`);
-  // Paquet publié : binaires embarqués dans native/ ; dépôt : dist/native/ (bun run build:native).
-  const embarque = Bun.fileURLToPath(new URL(`../native/${rel}`, import.meta.url));
-  return existsSync(embarque) ? embarque : Bun.fileURLToPath(new URL(`../../../dist/native/${rel}`, import.meta.url));
+interface WasmBindings {
+  initSync(input: { module: BufferSource | WebAssembly.Module } | BufferSource | WebAssembly.Module): unknown;
+  call_wasm?: (op: string, input: Uint8Array | number[]) => Uint8Array;
 }
 
-let lib: ReturnType<typeof ouvrir> | undefined;
+const wasm = rawWasm as unknown as WasmBindings;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
-function ouvrir() {
-  return dlopen(chemin(), {
-    auto_call: {
-      args: [FFIType.ptr, FFIType.u64, FFIType.ptr, FFIType.u64, FFIType.ptr],
-      returns: FFIType.ptr,
-    },
-    auto_free: { args: [FFIType.ptr, FFIType.u64], returns: FFIType.void },
-  });
-}
-
-export class ErreurNative extends Error {}
-
-const encodeur = new TextEncoder();
-const VIDE = new Uint8Array(1);
-
-function appeler(op: string, entree: Uint8Array): Uint8Array<ArrayBuffer> {
-  lib ??= ouvrir();
-  const o = encodeur.encode(op);
-  const len = new BigUint64Array(1);
-  const p = lib.symbols.auto_call(o, o.length, entree.length ? entree : VIDE, entree.length, len) as Pointer;
-  const n = Number(len[0]);
-  try {
-    const sortie = new Uint8Array(toArrayBuffer(p, 0, n)).slice();
-    if (sortie[0] !== 0) throw new ErreurNative(new TextDecoder().decode(sortie.subarray(1)));
-    return sortie.subarray(1);
-  } finally {
-    lib.symbols.auto_free(p, n);
+export class NativeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NativeError";
   }
 }
 
-const json = (doc: unknown) => encodeur.encode(JSON.stringify(doc));
+let initialized = false;
 
-/** Document (JSON de @auto/domain + numero) → PDF A4. */
-export const rendrePdf = (doc: unknown) => appeler("rendre", json(doc));
-
-/** Facture émise → Factur-X EN 16931 (PDF/A-3b avec factur-x.xml), contrôlé avant retour. */
-export function facturx(doc: unknown, date = new Date()): Uint8Array<ArrayBuffer> {
-  const corps = json(doc);
-  const entree = new Uint8Array(8 + corps.length);
-  new DataView(entree.buffer).setBigInt64(0, BigInt(Math.floor(date.getTime() / 1000)), true);
-  entree.set(corps, 8);
-  return appeler("facturx", entree);
+/**
+ * Initialize the underlying Wasm module synchronously.
+ * In Cloudflare Workers, pass the static `.wasm` import: `initNative(wasmModule)`.
+ * In Bun, omit the argument to load `wasm/auto_ffi_bg.wasm` from disk.
+ */
+export function initNative(module?: WebAssembly.Module | BufferSource): void {
+  if (initialized) return;
+  if (module) {
+    wasm.initSync({ module });
+    initialized = true;
+    return;
+  }
+  const fs = process.getBuiltinModule?.("node:fs") as { readFileSync(path: URL): Uint8Array } | undefined;
+  if (!fs) {
+    throw new NativeError("Edge/browser runtimes must initialize native Wasm via initNative(wasmModule)");
+  }
+  const bytes = fs.readFileSync(new URL("../wasm/auto_ffi_bg.wasm", import.meta.url));
+  wasm.initSync({ module: bytes });
+  initialized = true;
 }
 
-/** XML CII EN 16931 d'une facture émise. */
-export const xmlCii = (doc: unknown) => new TextDecoder().decode(appeler("xml", json(doc)));
-
-/** XML Factur-X embarqué d'un PDF reçu, ou null. */
-export function extraireXml(pdf: Uint8Array): string | null {
-  const x = new TextDecoder().decode(appeler("extraire", pdf));
-  return x || null;
+export function isEnglishWasmReady(): boolean {
+  try {
+    initNative();
+    return typeof wasm.call_wasm === "function";
+  } catch {
+    return false;
+  }
 }
 
-/** Non-conformités PDF/A-3b (vide = conforme). */
-export const verifierPdfA = (pdf: Uint8Array): string[] =>
-  JSON.parse(new TextDecoder().decode(appeler("verifier_pdfa", pdf)));
-
-/** Montant TTC (BT-112, GrandTotalAmount) d'un XML CII, en centimes. */
-export function totalTtcCents(xml: string): number | null {
-  const m = /<ram:GrandTotalAmount>(-?\d+)\.(\d{2})<\/ram:GrandTotalAmount>/.exec(xml);
-  if (!m) return null;
-  const c = Number(m[1]) * 100 + Number(m[2]);
-  return m[1]!.startsWith("-") ? -(Math.abs(Number(m[1])) * 100 + Number(m[2])) : c;
+export function callWasm(op: string, input: Uint8Array): Uint8Array<ArrayBuffer> {
+  initNative();
+  if (typeof wasm.call_wasm !== "function") {
+    throw new NativeError("Loaded Wasm artifact does not export `call_wasm` (awaiting slim crates/auto-ffi build)");
+  }
+  try {
+    const out = wasm.call_wasm(op, input);
+    return new Uint8Array(out);
+  } catch (err) {
+    throw new NativeError(err instanceof Error ? err.message : String(err));
+  }
 }
 
-export type CelluleLue = string | number | boolean | null;
-export interface Lecture {
+/** Platform `Native` port backed by the initialized Wasm module. */
+export const wasmNative: Native = {
+  async call(op: string, input: Uint8Array): Promise<Uint8Array> {
+    return callWasm(op, input);
+  },
+};
+
+const json = (value: unknown): Uint8Array => encoder.encode(JSON.stringify(value));
+
+/** Concatenate `u32` little-endian length-prefixed binary frames. */
+export function frameParts(parts: readonly Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + 4 + part.length, 0);
+  const out = new Uint8Array(total);
+  const view = new DataView(out.buffer);
+  let offset = 0;
+  for (const part of parts) {
+    view.setUint32(offset, part.length, true);
+    out.set(part, offset + 4);
+    offset += 4 + part.length;
+  }
+  return out;
+}
+
+/** Decode concatenated `u32` little-endian length-prefixed binary frames. */
+export function unframeParts(bytes: Uint8Array): Uint8Array[] {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const parts: Uint8Array[] = [];
+  for (let offset = 0; offset < bytes.length;) {
+    if (offset + 4 > bytes.length) throw new NativeError("Truncated frame header");
+    const len = view.getUint32(offset, true);
+    offset += 4;
+    if (offset + len > bytes.length) throw new NativeError("Truncated frame payload");
+    parts.push(bytes.subarray(offset, offset + len));
+    offset += len;
+  }
+  return parts;
+}
+
+// Invoicing / Factur-X / PDF/A --------------------------------------------------------------------
+
+/** Render a document (`@aphrody/auto-domain` Document JSON + optional number) to A4 PDF. */
+export function renderPdf(doc: unknown, locale?: Locale): Uint8Array<ArrayBuffer> {
+  return callWasm("render_pdf", json(locale ? { doc, locale } : doc));
+}
+
+/** Generate an EN 16931 Factur-X PDF/A-3b invoice with embedded `factur-x.xml`. */
+export function facturx(doc: unknown, date = new Date(), locale?: Locale): Uint8Array<ArrayBuffer> {
+  const timestamp = Math.floor(date.getTime() / 1000);
+  return callWasm("facturx", json({ doc, timestamp, ...(locale ? { locale } : {}) }));
+}
+
+/** Generate EN 16931 CII XML (`factur-x.xml`) for an issued invoice or credit note. */
+export function xmlCii(doc: unknown): string {
+  return decoder.decode(callWasm("xml_cii", json(doc)));
+}
+
+/** Extract embedded Factur-X XML from a PDF, or `null` when absent. */
+export function extractXml(pdf: Uint8Array): string | null {
+  const xml = decoder.decode(callWasm("extract_xml", pdf));
+  return xml || null;
+}
+
+/** Verify PDF/A-3b compliance errors (empty array = compliant). */
+export function verifyPdfA(pdf: Uint8Array): string[] {
+  return JSON.parse(decoder.decode(callWasm("verify_pdfa", pdf))) as string[];
+}
+
+/** Parse GrandTotalAmount (BT-112) in cents from a CII XML payload. */
+export function parseTotalInclVatCents(xml: string): number | null {
+  const match = /<ram:GrandTotalAmount>(-?\d+)\.(\d{2})<\/ram:GrandTotalAmount>/.exec(xml);
+  if (!match) return null;
+  const whole = Number(match[1]);
+  const cents = Number(match[2]);
+  const abs = Math.abs(whole) * 100 + cents;
+  return match[1]!.startsWith("-") ? -abs : abs;
+}
+
+// Spreadsheets ------------------------------------------------------------------------------------
+
+export type CellValue = string | number | boolean | null;
+
+export interface SpreadsheetReadResult {
   format: "xlsx" | "xls" | "xlsb" | "ods" | "csv";
-  feuilles: { nom: string; lignes: CelluleLue[][] }[];
-  avertissements: string[];
+  sheets: { name: string; rows: CellValue[][] }[];
+  warnings: string[];
 }
 
-/** Classeur xlsx, xls, xlsb, ods ou csv → lignes de valeurs (dates Excel en numéros de série). */
-export const lireTableur = (octets: Uint8Array): Lecture =>
-  JSON.parse(new TextDecoder().decode(appeler("tableur_lire", octets)));
+export const readSpreadsheet = (bytes: Uint8Array): SpreadsheetReadResult =>
+  JSON.parse(decoder.decode(callWasm("read_spreadsheet", bytes))) as SpreadsheetReadResult;
 
-export type TypeColonne = "texte" | "nombre" | "euros" | "date" | "pourcent";
-export interface Classeur {
-  feuilles: {
-    nom: string;
-    colonnes: { titre: string; type?: TypeColonne; largeur?: number }[];
-    /** euros en centimes, pourcent en points de base, date « AAAA-MM-JJ ». */
-    lignes: CelluleLue[][];
+export type ColumnType = "text" | "number" | "euros" | "date" | "percent";
+
+export interface Workbook {
+  sheets: {
+    name: string;
+    columns: { title: string; type?: ColumnType; width?: number }[];
+    /** Euros in integer cents, percent in basis points, dates formatted YYYY-MM-DD. */
+    rows: CellValue[][];
   }[];
 }
 
-/** Classeur typé → xlsx (en-tête en gras figée). */
-export const ecrireXlsx = (c: Classeur) => appeler("xlsx_ecrire", json(c));
-export interface EditionCellule {
-  feuille: string;
-  ligne: number;
-  colonne: number;
-  valeur?: CelluleLue;
-  formule?: string;
-}
-/** Coordonnées à partir de 1 ; formules recalculées par Gridcraft, styles conservés. */
-export const modifierXlsx = (xlsx: Uint8Array, editions: EditionCellule[]) =>
-  appeler("xlsx_modifier", trames([json(editions), xlsx]));
-export const remplacerDocx = (docx: Uint8Array, remplacements: { chercher: string; remplacer: string }[]) =>
-  appeler("docx_remplacer", trames([json(remplacements), docx]));
+export const writeXlsx = (workbook: Workbook): Uint8Array<ArrayBuffer> => callWasm("write_xlsx", json(workbook));
 
-/** Numéro de série Excel (système 1900) → « AAAA-MM-JJ ». */
-export function dateExcel(serie: number): string {
-  return new Date(Date.UTC(1899, 11, 30) + Math.round(serie) * 86_400_000).toISOString().slice(0, 10);
+export interface CellEdit {
+  sheet: string;
+  row: number;
+  col: number;
+  value?: CellValue;
+  formula?: string;
 }
 
-// Fichiers PDF et Word (crate auto-fichiers) ------------------------------------------------------
+/** 1-based cell edits; preserves formatting/other sheets and recalculates dependent formulas. */
+export const modifyXlsx = (xlsx: Uint8Array, edits: CellEdit[]): Uint8Array<ArrayBuffer> =>
+  callWasm("modify_xlsx", frameParts([json(edits), xlsx]));
 
-/** Concatène des trames `u32` LE de longueur + octets (entrée des opérations à plusieurs parties). */
-function trames(parties: Uint8Array[]): Uint8Array {
-  const sortie = new Uint8Array(parties.reduce((n, p) => n + 4 + p.length, 0));
-  const vue = new DataView(sortie.buffer);
-  let i = 0;
-  for (const p of parties) {
-    vue.setUint32(i, p.length, true);
-    sortie.set(p, i + 4);
-    i += 4 + p.length;
-  }
-  return sortie;
+/** Convert an Excel 1900-epoch serial date number into `YYYY-MM-DD`. */
+export function excelDate(serial: number): string {
+  return new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** PDF fusionnés dans l'ordre, un signet par fichier (son nom). */
-export const fusionnerPdf = (pdfs: { nom: string; octets: Uint8Array }[]) =>
-  appeler("pdf_fusionner", trames(pdfs.flatMap((p) => [encodeur.encode(p.nom), p.octets])));
+// PDF & Word documents ----------------------------------------------------------------------------
 
-/** Nouveau PDF fait des pages données (numérotées à partir de 1, dans l'ordre donné). */
-export const extrairePagesPdf = (pdf: Uint8Array, pages: number[]) =>
-  appeler("pdf_pages", trames([json(pages.map((p) => p - 1)), pdf]));
+export const mergePdfs = (pdfs: { name: string; bytes: Uint8Array }[]): Uint8Array<ArrayBuffer> =>
+  callWasm("merge_pdfs", frameParts(pdfs.flatMap((p) => [encoder.encode(p.name), p.bytes])));
 
-/** Nombre de pages d'un PDF. */
-export const nombrePagesPdf = (pdf: Uint8Array) => Number(new TextDecoder().decode(appeler("pdf_nombre_pages", pdf)));
+/** Extract 1-based pages into a new PDF in the requested order. */
+export const extractPdfPages = (pdf: Uint8Array, pages: number[]): Uint8Array<ArrayBuffer> =>
+  callWasm("extract_pdf_pages", frameParts([json(pages.map((p) => p - 1)), pdf]));
 
-/** Texte de chaque page dans l'ordre de lecture (500 pages au plus ; vide pour une page scannée). */
-export const textePdf = (pdf: Uint8Array): string[] =>
-  (JSON.parse(new TextDecoder().decode(appeler("pdf_texte", pdf))) as { pages: string[] }).pages;
+export const pdfPageCount = (pdf: Uint8Array): number => Number(decoder.decode(callWasm("pdf_page_count", pdf)));
 
-export interface DocumentSimple {
-  titre?: string;
-  paragraphes: { texte: string; style?: "titre" | "titre1" | "titre2" | "titre3"; gras?: boolean }[];
+export const pdfText = (pdf: Uint8Array): string[] =>
+  (JSON.parse(decoder.decode(callWasm("pdf_text", pdf))) as { pages: string[] }).pages;
+
+export interface SimpleDocx {
+  title?: string;
+  paragraphs: { text: string; style?: "title" | "heading1" | "heading2" | "heading3"; bold?: boolean }[];
 }
 
-/** Document Word A4 : titre puis paragraphes (une ligne de texte = un paragraphe). */
-export const creerDocx = (d: DocumentSimple) => appeler("docx_creer", json(d));
+export const createDocx = (doc: SimpleDocx): Uint8Array<ArrayBuffer> => callWasm("create_docx", json(doc));
 
-/** Noms des champs `{{ nom }}` d'un gabarit Word, sans doublon. */
-export const champsDocx = (docx: Uint8Array): string[] =>
-  JSON.parse(new TextDecoder().decode(appeler("docx_champs", docx)));
+export const readDocx = (docx: Uint8Array): { paragraphs: string[] } =>
+  JSON.parse(decoder.decode(callWasm("read_docx", docx))) as { paragraphs: string[] };
 
-/** Gabarit Word dont les champs `{{ nom }}` connus sont remplacés (les autres restent). */
-export const remplirDocx = (docx: Uint8Array, valeurs: Record<string, string>) =>
-  appeler("docx_remplir", trames([json(valeurs), docx]));
+export const docxTemplateFields = (docx: Uint8Array): string[] =>
+  JSON.parse(decoder.decode(callWasm("template_fields_docx", docx))) as string[];
 
-/** Texte du corps d'un document Word, un paragraphe par ligne. */
-export const texteDocx = (docx: Uint8Array) => new TextDecoder().decode(appeler("docx_texte", docx));
+export const fillDocxTemplate = (docx: Uint8Array, values: Record<string, string>): Uint8Array<ArrayBuffer> =>
+  callWasm("fill_template_docx", frameParts([json(values), docx]));
 
-/** Document Word → PDF (mise en page wordcraft, polices embarquées). */
-export const docxEnPdf = (docx: Uint8Array) => appeler("docx_pdf", docx);
+export const replaceDocx = (
+  docx: Uint8Array,
+  replacements: { find: string; replace: string }[],
+): Uint8Array<ArrayBuffer> => callWasm("replace_docx", frameParts([json(replacements), docx]));
 
-// Caviardage, signature et présentations (crate auto-fichiers) ------------------------------------
+export const docxText = (docx: Uint8Array): string => decoder.decode(callWasm("docx_text", docx));
 
-/** Lit des trames `u32` LE de longueur + octets (sortie des opérations à plusieurs parties). */
-function lireTrames(o: Uint8Array): Uint8Array[] {
-  const vue = new DataView(o.buffer, o.byteOffset, o.byteLength);
-  const parties: Uint8Array[] = [];
-  for (let i = 0; i < o.length;) {
-    const n = vue.getUint32(i, true);
-    parties.push(o.subarray(i + 4, i + 4 + n));
-    i += 4 + n;
-  }
-  return parties;
+export const docxToPdf = (docx: Uint8Array): Uint8Array<ArrayBuffer> => callWasm("docx_to_pdf", docx);
+
+// PDF redaction, signatures, presentations --------------------------------------------------------
+
+export type RedactionPattern = "iban" | "email" | "phone" | "credit_card" | "date";
+
+export interface RedactionOptions {
+  texts?: string[];
+  patterns?: RedactionPattern[];
+  caseSensitive?: boolean;
+  wholeWords?: boolean;
+  overlayText?: string;
 }
 
-export type MotifCaviardage = "iban" | "email" | "telephone" | "carte" | "date";
-
-export interface OptionsCaviardage {
-  textes?: string[];
-  motifs?: MotifCaviardage[];
-  casse?: boolean;
-  mots_entiers?: boolean;
-  texte_superpose?: string;
-}
-
-export interface RapportCaviardage {
+export interface RedactionReport {
   occurrences: number;
   pages: number[];
-  par_recherche: { recherche: string; occurrences: number }[];
-  glyphes: number;
+  byQuery: { query: string; occurrences: number }[];
+  glyphs: number;
   images: number;
-  traces: number;
+  paths: number;
   annotations: number;
-  champs: number;
+  fields: number;
 }
 
-/** Caviardage définitif (contenu supprimé, pavé noir, vérification) ; sans occurrence, PDF inchangé. */
-export function caviarderPdf(pdf: Uint8Array, o: OptionsCaviardage) {
-  const [rapport, sortie] = lireTrames(appeler("pdf_caviarder", trames([json(o), pdf])));
-  return { pdf: sortie!.slice(), rapport: JSON.parse(new TextDecoder().decode(rapport)) as RapportCaviardage };
+export function redactPdf(
+  pdf: Uint8Array,
+  opts: RedactionOptions,
+): { pdf: Uint8Array<ArrayBuffer>; report: RedactionReport } {
+  const [reportBytes, outPdf] = unframeParts(callWasm("redact_pdf", frameParts([json(opts), pdf])));
+  if (!reportBytes || !outPdf) throw new NativeError("Invalid redact_pdf response frame");
+  return {
+    pdf: new Uint8Array(outPdf),
+    report: JSON.parse(decoder.decode(reportBytes)) as RedactionReport,
+  };
 }
 
-export interface OptionsSignature {
-  mot_de_passe: string;
-  /** Date PDF `D:AAAAMMJJHHmmSSZ` ; par défaut maintenant. */
+export interface SignatureOptions {
+  password: string;
+  /** PDF UTC date `D:YYYYMMDDHHmmSSZ`; defaults to now. */
   date?: string;
-  raison?: string;
-  lieu?: string;
+  reason?: string;
+  location?: string;
   contact?: string;
-  champ?: string;
-  /** Page du nouveau champ, à partir de 0. */
+  field?: string;
+  /** Zero-based page index. */
   page?: number;
-  /** Rectangle visible `[x0, y0, x1, y1]` en points, origine en bas à gauche ; sinon invisible. */
-  rectangle?: [number, number, number, number];
-  certifier?: 1 | 2 | 3;
+  /** Optional visible rectangle `[x0, y0, x1, y1]` in points (origin bottom-left). */
+  rect?: [number, number, number, number];
+  certify?: 1 | 2 | 3;
 }
 
-/** Date PDF UTC (`D:20261023120000Z`). */
-export const datePdf = (d = new Date()) => `D:${d.toISOString().replace(/\D/g, "").slice(0, 14)}Z`;
+export const pdfDate = (d = new Date()): string => `D:${d.toISOString().replace(/\D/g, "").slice(0, 14)}Z`;
 
-/** Signature PAdES B-B (ETSI.CAdES.detached) avec une identité PKCS #12, en mise à jour incrémentale. */
-export const signerPdf = (pdf: Uint8Array, p12: Uint8Array, o: OptionsSignature) =>
-  appeler("pdf_signer", trames([json({ ...o, date: o.date ?? datePdf() }), p12, pdf]));
+export const signPdf = (pdf: Uint8Array, pkcs12: Uint8Array, opts: SignatureOptions): Uint8Array<ArrayBuffer> =>
+  callWasm("sign_pdf", frameParts([json({ ...opts, date: opts.date ?? pdfDate() }), pkcs12, pdf]));
 
-export interface SignatureVerifiee {
-  champ: string;
-  signee: boolean;
-  statut: "valide" | "inconnue" | "invalide" | "non_signee";
-  signataire: string | null;
+export interface VerifiedSignature {
+  field: string;
+  signed: boolean;
+  status: "valid" | "unknown" | "invalid" | "unsigned";
+  signer: string | null;
   date: string | null;
-  raison: string | null;
-  lieu: string | null;
+  reason: string | null;
+  location: string | null;
   format: string | null;
-  algorithme: string | null;
+  algorithm: string | null;
   certification: number | null;
-  horodatage: boolean;
-  modifications: "aucune" | "permises" | "interdites";
-  changements: string[];
-  empreinte: string | null;
+  timestamped: boolean;
+  modifications: "none" | "allowed" | "forbidden";
+  changes: string[];
+  fingerprint: string | null;
   details: string[];
 }
 
-/** Signatures d'un PDF vérifiées ; `confiance` : certificats de confiance PEM (sinon identités inconnues). */
-export const verifierSignaturesPdf = (pdf: Uint8Array, confiance = ""): SignatureVerifiee[] =>
-  JSON.parse(new TextDecoder().decode(appeler("pdf_signatures", trames([encodeur.encode(confiance), pdf]))));
+export const verifyPdfSignatures = (pdf: Uint8Array, trustedCertsPem = ""): VerifiedSignature[] =>
+  JSON.parse(
+    decoder.decode(callWasm("verify_signatures", frameParts([encoder.encode(trustedCertsPem), pdf]))),
+  ) as VerifiedSignature[];
 
-export interface NouvellePresentation {
-  titre?: string;
-  sous_titre?: string;
-  diapositives: { titre?: string; puces?: (string | { texte: string; niveau?: number })[]; notes?: string }[];
+export interface NewPresentation {
+  title?: string;
+  subtitle?: string;
+  slides: { title?: string; bullets?: (string | { text: string; level?: number })[]; notes?: string }[];
 }
 
-/** Présentation PPTX 16:9 : diapositive de titre puis diapositives titre et puces. */
-export const creerPptx = (p: NouvellePresentation) => appeler("pptx_creer", json(p));
+export const createPptx = (presentation: NewPresentation): Uint8Array<ArrayBuffer> =>
+  callWasm("create_pptx", json(presentation));
 
-/** PPTX → PDF, une diapositive par page (rendu DeckCraft, texte sélectionnable). */
-export const pptxEnPdf = (pptx: Uint8Array) => appeler("pptx_pdf", pptx);
+export const pptxText = (pptx: Uint8Array): string[] =>
+  (JSON.parse(decoder.decode(callWasm("pptx_text", pptx))) as { slides: string[] }).slides;
 
-// Base de connaissances (crate auto-connaissance, aphrody-rag-core) --------------------------------
+export const pptxToPdf = (pptx: Uint8Array): Uint8Array<ArrayBuffer> => callWasm("pptx_to_pdf", pptx);
 
-export interface Morceau {
-  /** Position dans le document, à partir de 0. */
-  position: number;
-  texte: string;
-  /** Fil des titres (`Guide > Garantie`) d'une source Markdown. */
-  titre: string | null;
-  ligne_debut: number;
-  ligne_fin: number;
+// Knowledge base chunking & vector search ---------------------------------------------------------
+
+export interface TextChunk {
+  index: number;
+  text: string;
+  heading: string | null;
+  startLine: number;
+  endLine: number;
 }
 
-/** Morceaux d'un texte : sections par titres pour une source `.md`, sinon phrases regroupées (chevauchement 15 %). */
-export const decouperTexte = (source: string, texte: string, taille?: number): Morceau[] =>
-  JSON.parse(new TextDecoder().decode(appeler("rag_decouper", json({ source, texte, taille }))));
+export const chunkText = (source: string, text: string, chunkSize?: number): TextChunk[] =>
+  JSON.parse(decoder.decode(callWasm("chunk_text", json({ source, text, chunkSize })))) as TextChunk[];
 
-const octetsF32 = (v: Float32Array | number[]) => {
+const float32Bytes = (v: Float32Array | number[]) => {
   const f = v instanceof Float32Array ? v : Float32Array.from(v);
   return new Uint8Array(f.buffer, f.byteOffset, f.byteLength);
 };
 
-/**
- * Les `k` lignes de `matrice` (vecteurs de `dimension` nombres mis bout à bout) les plus proches de `question`
- * par similarité cosinus, score décroissant ; `diversite` (λ de MMR, 0 à 1) écarte les quasi-doublons.
- */
-export const plusProches = (
-  question: Float32Array | number[],
-  matrice: Float32Array,
+export const nearestVectors = (
+  query: Float32Array | number[],
+  matrix: Float32Array,
   dimension: number,
   k: number,
-  diversite?: number,
-): { indice: number; score: number }[] =>
+  diversity?: number,
+): { index: number; score: number }[] =>
   JSON.parse(
-    new TextDecoder().decode(
-      appeler("rag_topk", trames([json({ dimension, k, diversite }), octetsF32(question), octetsF32(matrice)])),
+    decoder.decode(
+      callWasm(
+        "nearest_vectors",
+        frameParts([json({ dimension, k, diversity }), float32Bytes(query), float32Bytes(matrix)]),
+      ),
     ),
+  ) as { index: number; score: number }[];
+
+// Modern Rust Better Auth (`auto-auth` via Wasm/FFI) --------------------------------------------
+
+const toBase64 = (bytes: Uint8Array): string => {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+  return btoa(s);
+};
+
+const fromBase64 = (b64: string): Uint8Array<ArrayBuffer> => {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+export const authHashPassword = (
+  password: string,
+  salt: Uint8Array = crypto.getRandomValues(new Uint8Array(16)),
+  mode: "argon2id" | "scrypt" = "argon2id",
+): string =>
+  (
+    JSON.parse(decoder.decode(callWasm("auth_hash_password", json({ password, saltB64: toBase64(salt), mode })))) as {
+      hash: string;
+    }
+  ).hash;
+
+export const authVerifyPassword = (password: string, hash: string): boolean =>
+  (JSON.parse(decoder.decode(callWasm("auth_verify_password", json({ password, hash })))) as { valid: boolean }).valid;
+
+export interface RustJwtClaims {
+  iss: string;
+  sub: string;
+  aud: string;
+  iat: number;
+  exp: number;
+  activeOrganizationId?: string;
+  role?: string;
+  email?: string;
+}
+
+export const authSignJwt = (input: {
+  masterSecret: string;
+  keyLabel?: string;
+  claims: RustJwtClaims;
+}): { token: string; kid: string } =>
+  JSON.parse(decoder.decode(callWasm("auth_sign_jwt", json(input)))) as { token: string; kid: string };
+
+export const authVerifyJwt = (input: {
+  masterSecret: string;
+  keyLabel?: string;
+  token: string;
+  expectedIssuer?: string;
+  expectedAudience?: string;
+  nowUnixSecs?: number;
+}): RustJwtClaims =>
+  JSON.parse(
+    decoder.decode(
+      callWasm("auth_verify_jwt", json({ ...input, nowUnixSecs: input.nowUnixSecs ?? Math.floor(Date.now() / 1000) })),
+    ),
+  ) as RustJwtClaims;
+
+export const authJwks = (input: { masterSecret: string; keyLabel?: string }): { keys: Record<string, string>[] } =>
+  JSON.parse(decoder.decode(callWasm("auth_jwks", json(input)))) as { keys: Record<string, string>[] };
+
+export const authSealSecret = (
+  masterSecret: string,
+  purpose: string,
+  plaintext: Uint8Array,
+  nonce: Uint8Array = crypto.getRandomValues(new Uint8Array(12)),
+): string =>
+  (
+    JSON.parse(
+      decoder.decode(
+        callWasm(
+          "auth_seal_secret",
+          json({ masterSecret, purpose, plaintextB64: toBase64(plaintext), nonceB64: toBase64(nonce) }),
+        ),
+      ),
+    ) as { token: string }
+  ).token;
+
+export const authOpenSecret = (masterSecret: string, purpose: string, token: string): Uint8Array<ArrayBuffer> =>
+  fromBase64(
+    (
+      JSON.parse(decoder.decode(callWasm("auth_open_secret", json({ masterSecret, purpose, token })))) as {
+        plaintextB64: string;
+      }
+    ).plaintextB64,
   );
+
+export const authTotpCode = (
+  secretB32: string,
+  unixSecs = Math.floor(Date.now() / 1000),
+  issuer = "Auto",
+  account = "user",
+): { code: string; uri: string } =>
+  JSON.parse(decoder.decode(callWasm("auth_totp_code", json({ secretB32, unixSecs, issuer, account })))) as {
+    code: string;
+    uri: string;
+  };
+
+export const authTotpVerify = (secretB32: string, code: string, unixSecs = Math.floor(Date.now() / 1000)): boolean =>
+  (JSON.parse(decoder.decode(callWasm("auth_totp_verify", json({ secretB32, code, unixSecs })))) as { valid: boolean })
+    .valid;
+
+export const authSignToken = (masterSecret: string, purpose: string, payload: unknown): string =>
+  (
+    JSON.parse(decoder.decode(callWasm("auth_sign_token", json({ masterSecret, purpose, payload })))) as {
+      token: string;
+    }
+  ).token;
+
+export const authVerifyToken = <T = unknown>(masterSecret: string, purpose: string, token: string): T =>
+  JSON.parse(decoder.decode(callWasm("auth_verify_token", json({ masterSecret, purpose, token })))) as T;
+
+export const authGenerateApiKey = (
+  prefix = "auto_",
+  entropy: Uint8Array = crypto.getRandomValues(new Uint8Array(24)),
+): { rawKey: string; start: string; prefix: string; sha256B64u: string } =>
+  JSON.parse(decoder.decode(callWasm("auth_generate_api_key", json({ prefix, entropyB64: toBase64(entropy) })))) as {
+    rawKey: string;
+    start: string;
+    prefix: string;
+    sha256B64u: string;
+  };
+
+export const authCanPerform = (role: string, action: string): boolean =>
+  (JSON.parse(decoder.decode(callWasm("auth_can_perform", json({ role, action })))) as { allowed: boolean }).allowed;
