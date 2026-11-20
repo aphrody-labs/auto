@@ -1,5 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Vulnérabilité de sécurité
-    url: https://github.com/aphrody-labs/auto/security/advisories/new
-    about: Signalement privé, jamais dans une issue publique.

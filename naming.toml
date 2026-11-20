@@ -1,7 +1,0 @@
-id = "auto"
-kind = "app"
-org = "aphrody-labs"
-
-[names]
-npm_scope = "@aphrody"
-crate_prefix = "auto-"

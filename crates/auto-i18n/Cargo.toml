@@ -1,9 +1,0 @@
-[package]
-name = "auto-i18n"
-version = "0.2.0"
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-
-[dependencies]
-craft-i18n.workspace = true

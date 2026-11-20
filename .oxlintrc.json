@@ -1,3 +1,0 @@
-{
-  "ignorePatterns": [".cache/**", "target/**", ".claude/**", "apps/web/public/craft/**"]
-}

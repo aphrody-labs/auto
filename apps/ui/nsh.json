@@ -1,7 +1,0 @@
-{
-  "name": "Auto",
-  "id": "com.aphrody.auto.ui",
-  "appearance": "system",
-  "rust": ".",
-  "root": "App"
-}

@@ -1,2 +1,0 @@
-# Tracked upstream forks (gh-fork)
-better-auth/better-auth TypeScript

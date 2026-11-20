@@ -1,2 +1,0 @@
-# Paths intentionally anchored to container/deploy mount layouts (never host-specific paths or secrets).
-apps/server/deploy/compose.self-hosted.yaml
